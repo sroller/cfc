@@ -64,6 +64,7 @@ module Cfc
 
     def clear_data
       @db.execute("DELETE FROM player_ratings")
+      @db.execute("DELETE FROM players")
     end
 
     def save_players(players, download_date)
