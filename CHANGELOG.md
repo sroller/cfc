@@ -1,5 +1,13 @@
 ## [Unreleased]
 
+## [0.2.0] - 2026-03-01
+
+- Add `download` command to fetch weekly CFC rating list from Google Storage
+- Add SQLite database module for storing player ratings with date tracking
+- Implement CSV parsing with data cleaning (quotes, whitespace, special values)
+- Add local caching (~/.cfc-cache) with 7-day expiry
+- Add comprehensive tests for downloader and database operations
+
 ## [0.1.0] - 2026-03-01
 
 - Initial release
