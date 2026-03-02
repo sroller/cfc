@@ -11,6 +11,7 @@ module Cfc
     URL = "https://storage.googleapis.com/cfc-public/data/tdlist.txt"
     CACHE_DIR = File.expand_path("~/.cfc-cache")
     CACHE_FILE = File.join(CACHE_DIR, "tdlist.txt")
+    CACHE_ETAG_FILE = File.join(CACHE_DIR, ".etag")
     CACHE_EXPIRY = 7 * 24 * 60 * 60 # 7 days in seconds
     def self.download_and_store(force: false)
       db = Database.new
@@ -32,26 +33,67 @@ module Cfc
       # Check if cache is valid
       cached_data = read_cached_data unless force
 
-      if cached_data
-        cached_data
-      else
-        new_data = download_from_url
-        write_cached_data(new_data)
-        new_data
+      if cached_data && !force
+        # Check if remote file has changed using HEAD request
+        return cached_data unless file_has_changed?
       end
+
+      # Download from URL (full download)
+      new_data = download_from_url
+      etag = fetch_etag
+      write_cached_data(new_data, etag)
+      new_data
+    end
+
+    def self.file_has_changed?
+      uri = URI.parse(URL)
+      http = Net::HTTP.new(uri.host, uri.port)
+      http.use_ssl = true if uri.scheme == "https"
+
+      response = http.head(uri.path)
+
+      # Get ETag from remote file
+      remote_etag = response["etag"]
+      return true if remote_etag.nil?
+
+      # Check if local cache has matching ETag
+      if File.exist?(CACHE_ETAG_FILE)
+        local_etag = File.read(CACHE_ETAG_FILE).strip
+        return remote_etag == local_etag
+      end
+
+      # No local ETag, file has effectively changed
+      true
+    rescue
+      # If HEAD request fails, assume file has changed
+      true
     end
 
     def self.download_from_url
       uri = URI.parse(URL)
-      response = Net::HTTP.get(uri)
-      response
+      http = Net::HTTP.new(uri.host, uri.port)
+      http.use_ssl = true if uri.scheme == "https"
+      response = http.get(uri.path)
+      response.body
     end
 
-    def self.write_cached_data(data)
+    def self.fetch_etag
+      uri = URI.parse(URL)
+      http = Net::HTTP.new(uri.host, uri.port)
+      http.use_ssl = true if uri.scheme == "https"
+      response = http.head(uri.path)
+      response["etag"]
+    rescue
+      nil
+    end
+
+    def self.write_cached_data(data, etag = nil)
       FileUtils.mkdir_p(CACHE_DIR)
       # Ensure UTF-8 encoding, replace invalid sequences
       data.force_encoding(Encoding::UTF_8).valid_encoding? ? data : data.encode("UTF-8", "binary", invalid: :replace, undef: :replace, replace: "?")
       File.write(CACHE_FILE, data)
+      # Store ETag if available
+      File.write(CACHE_ETAG_FILE, etag || "") if etag
     end
 
     def self.read_cached_data
