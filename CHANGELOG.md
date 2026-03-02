@@ -14,13 +14,15 @@
 - Deduplicate rating records (only save when ratings actually change)
 - 75,391 unique players tracked with 111,393 rating snapshots
 
-## [0.2.1] - 2026-03-02
+## [0.2.2] - 2026-03-02
 
-- Fix `diff` command to display player names instead of CFC IDs only
-- Add filtering for malformed CSV entries with invalid name data
-- Updated diff output to show "Name" format (e.g., "Aadhya Aadhithya")
-- Removed duplicate method definitions in diff.rb
-- Filtered out 10 invalid entries from new players list (516 → 506)
+- Add ETag-based caching to prevent unnecessary downloads
+- Add HEAD request to check if remote file has changed before downloading
+- Store ETag in separate `.etag` cache file for comparison
+- Skip database updates when file hasn't changed
+- Preserve all historical data (no database clearing)
+- Deduplication now only updates when ratings actually change
+- 75,391 unique players tracked with 1,078,061 rating snapshots
 
 ## [0.1.0] - 2026-03-01
 
