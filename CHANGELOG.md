@@ -9,6 +9,7 @@
 - Add comprehensive tests for downloader and database operations
 - Track full rating history per player (rating, active_rating, fide_rating over time)
 - Add `diff` command to compare rating lists with optional `--from` and `--to` parameters
+- Load fixtures chronologically to build historical rating data
 
 ## [0.1.0] - 2026-03-01
 
