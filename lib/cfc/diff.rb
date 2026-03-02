@@ -7,39 +7,17 @@ require "date"
 
 module Cfc
   class Diff
-    FIXTURES_DIR = File.join(__dir__, "../../test/fixtures")
-
     def self.run(from: nil, to: nil)
-      # Find all fixture files and sort by date
-      fixtures = Dir.glob(File.join(FIXTURES_DIR, "*.csv")).sort
+      # Get ratings from database for from and to dates
+      db = Database.new
+      from_players = get_players_by_date(db, from)
+      to_players = get_players_by_date(db, to)
+      db.close
 
-      if fixtures.empty?
-        puts "No fixtures found in #{FIXTURES_DIR}"
+      if from_players.nil? || to_players.nil?
+        puts "Could not find data for #{from} and #{to}"
         return
       end
-
-      # Extract dates from filenames: chess-canada-YYYYMMDD-HHMMSS.csv
-      get_date = ->(path) { File.basename(path).split("-")[2] }
-      sorted_fixtures = fixtures.sort_by { |f| get_date[f] }
-
-      # Determine from and to dates
-      from_date = from || get_date.call(sorted_fixtures[-2])
-      to_date = to || get_date.call(sorted_fixtures[-1])
-
-      from_data = load_fixture(from_date)
-      to_data = load_fixture(to_date)
-
-      if from_data.nil? || to_data.nil?
-        puts "Could not load fixtures for #{from_date} and #{to_date}"
-        puts "Available: #{sorted_fixtures.map { |f| get_date[f] }.join(", ")}"
-        puts "from_data: #{from_data.inspect}"
-        puts "to_data: #{to_data.inspect}"
-        return
-      end
-
-      # Parse players
-      from_players = parse_players(from_data)
-      to_players = parse_players(to_data)
 
       # Find changes
       changes = compare_players(from_players, to_players)
@@ -48,14 +26,8 @@ module Cfc
       print_changes(changes)
     end
 
-    def self.load_fixture(date)
-      # Find fixture by date prefix in filename
-      fixtures = Dir.glob(File.join(FIXTURES_DIR, "chess-canada-#{date}*.csv"))
-      return nil if fixtures.empty?
-
-      fixture_path = fixtures.first
-      data = File.read(fixture_path).encode("UTF-8", "binary", invalid: :replace, undef: :replace, replace: "?")
-      data
+    def self.get_players_by_date(db, date)
+      db.get_rating_history_by_date(date)
     end
 
     def self.parse_players(csv_data)

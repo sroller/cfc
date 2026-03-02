@@ -132,6 +132,13 @@ module Cfc
       SQL
     end
 
+    def get_rating_history_by_date(date)
+      @db.execute(<<-SQL, date)
+        SELECT cfc_id, cfc_number, rating, active_rating, fide_rating
+        FROM player_ratings WHERE rating_date = ?
+      SQL
+    end
+
     def close
       @db.close
     end
