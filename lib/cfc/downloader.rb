@@ -15,18 +15,22 @@ module Cfc
     CACHE_EXPIRY = 7 * 24 * 60 * 60 # 7 days in seconds
     def self.download_and_store(force: false)
       db = Database.new
-      db.clear_data
 
       # Download and cache the latest rating list
       csv_data = fetch_csv(force: force)
       players = parse_players(csv_data)
       download_date = Date.today.to_s
 
-      db.save_players(players, download_date)
+      # Only update database if data was actually downloaded
+      if csv_data
+        db.clear_data
+        db.save_players(players, download_date)
+        puts "Loaded latest cached data"
+      else
+        puts "No changes since last download"
+      end
 
       db.close
-
-      puts "Loaded latest cached data"
     end
 
     def self.fetch_csv(force: false)
