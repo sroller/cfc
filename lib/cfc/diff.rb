@@ -61,15 +61,51 @@ module Cfc
     def self.parse_players(csv_data)
       lines = csv_data.lines
       lines[1..-1].map do |line|
-        parts = line.split(",")
-        return nil if parts.length < 3
-
-        {
-          cfc_id: parts[0],
-          rating: parts[6],
-          active_rating: parts[8]
-        }
+        parse_csv_line(line)
       end.compact
+    end
+
+    def self.parse_csv_line(line)
+      # Simple split by comma for malformed CSV
+      parts = line.split(",")
+      return nil if parts.length < 12
+
+      last_name = clean_name(parts[2])
+      first_name = clean_name(parts[3])
+
+      # Skip entries where name looks like a date or invalid data
+      return nil if invalid_name?(last_name) || invalid_name?(first_name)
+
+      {
+        cfc_id: parts[0],
+        last_name: last_name,
+        first_name: first_name,
+        rating: parse_int(parts[6]),
+        active_rating: parse_int(parts[8])
+      }
+    end
+
+    def self.invalid_name?(name)
+      return true if name.nil? || name.empty?
+      # Check if it looks like a date or invalid placeholder
+      return true if name =~ /^[A-Z][a-z]+ [A-Z][a-z]+ \d{4}$/ || # "February 2025"
+                      name =~ /^\d+$/ || # Just numbers
+                      name == "." || name == "---"
+      false
+    end
+
+    def self.parse_int(value)
+      return nil if value.nil? || value.to_s.empty? || value.to_s == "-"
+      Integer(value)
+    rescue ArgumentError
+      nil
+    end
+
+    def self.clean_name(value)
+      return nil if value.nil? || value.to_s.empty?
+      cleaned = value.to_s.gsub(/^[\"\s]+/, "").gsub(/[\"\s]+$/, "").gsub(/"/, "")
+      return nil if cleaned == "---" || cleaned == "." || cleaned.empty?
+      cleaned
     end
 
     def self.compare_players(from_players, to_players)
@@ -117,7 +153,8 @@ module Cfc
       if changes[:new].any?
         puts "New Players: #{changes[:new].count}"
         changes[:new].each do |p|
-          puts "  + #{p[:cfc_id]} Rating: #{p[:rating]} Active: #{p[:active_rating]}"
+          name = "#{p[:first_name]} #{p[:last_name]}"
+          puts "  + #{p[:cfc_id]} (#{name}) Rating: #{p[:rating]} Active: #{p[:active_rating]}"
         end
         puts
       end
@@ -126,7 +163,8 @@ module Cfc
       if changes[:removed].any?
         puts "Removed Players: #{changes[:removed].count}"
         changes[:removed].each do |p|
-          puts "  - #{p[:cfc_id]} Rating: #{p[:rating]} Active: #{p[:active_rating]}"
+          name = "#{p[:first_name]} #{p[:last_name]}"
+          puts "  - #{p[:cfc_id]} (#{name}) Rating: #{p[:rating]} Active: #{p[:active_rating]}"
         end
         puts
       end
@@ -135,7 +173,8 @@ module Cfc
       if changes[:changed].any?
         puts "Changed Players: #{changes[:changed].count}"
         changes[:changed].each do |c|
-          puts "  #{c[:cfc_id]}: #{c[:from][:rating]} -> #{c[:to][:rating]}"
+          name = "#{c[:to][:first_name]} #{c[:to][:last_name]}"
+          puts "  #{c[:cfc_id]} (#{name}): #{c[:from][:rating]} -> #{c[:to][:rating]}"
           puts "         Active: #{c[:from][:active_rating]} -> #{c[:to][:active_rating]}"
         end
         puts
