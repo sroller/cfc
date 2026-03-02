@@ -7,6 +7,7 @@
 - Implement CSV parsing with data cleaning (quotes, whitespace, special values)
 - Add local caching (~/.cfc-cache) with 7-day expiry
 - Add comprehensive tests for downloader and database operations
+- Optimize database: use `cfc_id` as unique key, only update `download_date` when data changes
 
 ## [0.1.0] - 2026-03-01
 
