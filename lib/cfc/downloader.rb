@@ -13,16 +13,31 @@ module Cfc
     CACHE_FILE = File.join(CACHE_DIR, "tdlist.txt")
     CACHE_ETAG_FILE = File.join(CACHE_DIR, ".etag")
     CACHE_EXPIRY = 7 * 24 * 60 * 60 # 7 days in seconds
+    FIXTURES_DIR = File.expand_path("../../test/fixtures", __dir__)
+
     def self.download_and_store(force: false)
       db = Database.new
 
+      # Load fixtures chronologically for initial seeding (only on first run)
+      if !File.exist?(File.join(CACHE_DIR, "tdlist.txt")) || force
+        fixtures = Dir.glob(File.join(FIXTURES_DIR, "*.csv")).sort
+        fixtures.each do |fixture|
+          csv_data = File.read(fixture)
+          players = parse_players(csv_data)
+          filename = File.basename(fixture)
+          date_part = filename.split("-")[2]
+          download_date = "#{date_part[0..3]}-#{date_part[4..5]}-#{date_part[6..7]}"
+          db.save_players(players, download_date)
+        end
+      end
+
       # Download and cache the latest rating list
       csv_data = fetch_csv(force: force)
-      players = parse_players(csv_data)
-      download_date = Date.today.to_s
 
       # Only update database if data was actually downloaded
       if csv_data
+        players = parse_players(csv_data)
+        download_date = Date.today.to_s
         db.save_players(players, download_date)
         puts "Loaded latest cached data"
       else
@@ -38,7 +53,7 @@ module Cfc
 
       if cached_data && !force
         # Check if remote file has changed using HEAD request
-        return cached_data unless file_has_changed?
+        return nil if !file_has_changed?
       end
 
       # Download from URL (full download)
@@ -62,7 +77,7 @@ module Cfc
       # Check if local cache has matching ETag
       if File.exist?(CACHE_ETAG_FILE)
         local_etag = File.read(CACHE_ETAG_FILE).strip
-        return remote_etag == local_etag
+        return remote_etag != local_etag
       end
 
       # No local ETag, file has effectively changed
