@@ -23,7 +23,6 @@ module Cfc
 
       # Only update database if data was actually downloaded
       if csv_data
-        db.clear_data
         db.save_players(players, download_date)
         puts "Loaded latest cached data"
       else
