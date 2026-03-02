@@ -12,18 +12,38 @@ module Cfc
     CACHE_DIR = File.expand_path("~/.cfc-cache")
     CACHE_FILE = File.join(CACHE_DIR, "tdlist.txt")
     CACHE_EXPIRY = 7 * 24 * 60 * 60 # 7 days in seconds
+    FIXTURES_DIR = File.expand_path("../../test/fixtures", __dir__)
 
     def self.download_and_store(force: false)
-      csv_data = fetch_csv(force: force)
-      players = parse_players(csv_data)
-      download_date = Date.today.to_s
-
       db = Database.new
       db.clear_data
-      db.save_players(players, download_date)
+
+      # Load fixtures in chronological order (ALL data, no deduplication)
+      fixtures = Dir.glob(File.join(FIXTURES_DIR, "*.csv")).sort
+      fixtures.each do |fixture|
+        csv_data = File.read(fixture)
+        players = parse_players(csv_data)
+        # Extract date from filename: chess-canada-YYYYMMDD-HHMMSS.csv
+        filename = File.basename(fixture)
+        date_part = filename.split("-")[2]
+        # Normalize to YYYY-MM-DD format
+        download_date = "#{date_part[0..3]}-#{date_part[4..5]}-#{date_part[6..7]}"
+
+        db.save_players(players, download_date)
+      end
+
+      # Load latest cached file (with deduplication)
+      if File.exist?(CACHE_FILE)
+        csv_data = File.read(CACHE_FILE)
+        players = parse_players(csv_data)
+        download_date = Date.today.to_s
+
+        db.save_players(players, download_date)
+      end
+
       db.close
 
-      puts "Downloaded #{players.count} players on #{download_date}"
+      puts "Loaded #{fixtures.count} fixture snapshots + #{File.exist?(CACHE_FILE) ? "latest cached" : "no cache"}"
     end
 
     def self.fetch_csv(force: false)
