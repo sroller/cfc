@@ -23,8 +23,7 @@ class TestDb < Minitest::Test
   def test_save_and_retrieve_players
     players = [
       {
-        cfc_id: 100001,
-        cfc_number: "100001",
+        cfc_id: 100_001,
         expiry: "2025-12-18",
         last_name: "Roller",
         first_name: "John",
@@ -38,8 +37,7 @@ class TestDb < Minitest::Test
         fide_rating: 1500
       },
       {
-        cfc_id: 100002,
-        cfc_number: "100002",
+        cfc_id: 100_002,
         expiry: "2025-12-18",
         last_name: "Smith",
         first_name: "Jane",
@@ -74,8 +72,7 @@ class TestDb < Minitest::Test
   def test_clear_data
     players = [
       {
-        cfc_id: 100001,
-        cfc_number: "100001",
+        cfc_id: 100_001,
         expiry: nil,
         last_name: "Test",
         first_name: "User",

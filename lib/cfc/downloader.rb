@@ -10,16 +10,18 @@ module Cfc
   class Downloader
     URL = "https://storage.googleapis.com/cfc-public/data/tdlist.txt"
     CACHE_DIR = File.expand_path("~/.cfc-cache")
+    HISTORY_DIR = File.expand_path("~/.cfc-history")
     CACHE_FILE = File.join(CACHE_DIR, "tdlist.txt")
     CACHE_ETAG_FILE = File.join(CACHE_DIR, ".etag")
     CACHE_EXPIRY = 7 * 24 * 60 * 60 # 7 days in seconds
     FIXTURES_DIR = File.expand_path("../../test/fixtures", __dir__)
 
-    def self.download_and_store(force: false)
+    def self.download_and_store(force: false, cron: false)
       db = Database.new
 
-      # Load fixtures chronologically for initial seeding (only on first run)
-      if !File.exist?(File.join(CACHE_DIR, "tdlist.txt")) || force
+      # Load fixtures chronologically for initial seeding (only if no data exists)
+      existing_count = db.db.execute("SELECT COUNT(*) FROM player_ratings").first["COUNT(*)"]
+      if existing_count.zero? || force
         fixtures = Dir.glob(File.join(FIXTURES_DIR, "*.csv")).sort
         fixtures.each do |fixture|
           csv_data = File.read(fixture)
@@ -27,7 +29,7 @@ module Cfc
           filename = File.basename(fixture)
           date_part = filename.split("-")[2]
           download_date = "#{date_part[0..3]}-#{date_part[4..5]}-#{date_part[6..7]}"
-          db.save_players(players, download_date)
+          db.save_players(players, download_date, dedupe: false)
         end
       end
 
@@ -39,21 +41,23 @@ module Cfc
         players = parse_players(csv_data)
         download_date = Date.today.to_s
         db.save_players(players, download_date)
-        puts "Loaded latest cached data"
+        puts "Loaded latest cached data" unless cron
+        db.close
+        true # Return true to indicate new data was downloaded
       else
-        puts "No changes since last download"
+        puts "No changes since last download" unless cron
+        db.close
+        false # Return false to indicate no new data
       end
-
-      db.close
     end
 
     def self.fetch_csv(force: false)
       # Check if cache is valid
       cached_data = read_cached_data unless force
 
-      if cached_data && !force
+      if cached_data && !force && !file_has_changed?
         # Check if remote file has changed using HEAD request
-        return nil if !file_has_changed?
+        return nil
       end
 
       # Download from URL (full download)
@@ -82,7 +86,7 @@ module Cfc
 
       # No local ETag, file has effectively changed
       true
-    rescue
+    rescue StandardError
       # If HEAD request fails, assume file has changed
       true
     end
@@ -101,17 +105,26 @@ module Cfc
       http.use_ssl = true if uri.scheme == "https"
       response = http.head(uri.path)
       response["etag"]
-    rescue
+    rescue StandardError
       nil
     end
 
     def self.write_cached_data(data, etag = nil)
       FileUtils.mkdir_p(CACHE_DIR)
       # Ensure UTF-8 encoding, replace invalid sequences
-      data.force_encoding(Encoding::UTF_8).valid_encoding? ? data : data.encode("UTF-8", "binary", invalid: :replace, undef: :replace, replace: "?")
+      data = if data.force_encoding(Encoding::UTF_8).valid_encoding?
+               data
+             else
+               data.encode("UTF-8", "binary", invalid: :replace,
+                                              undef: :replace, replace: "?")
+             end
       File.write(CACHE_FILE, data)
       # Store ETag if available
       File.write(CACHE_ETAG_FILE, etag || "") if etag
+      # Archive the file with datestamp for historical rebuilds
+      FileUtils.mkdir_p(HISTORY_DIR)
+      archive_file = File.join(HISTORY_DIR, "tdlist-#{Date.today.strftime("%Y%m%d")}.txt")
+      File.write(archive_file, data)
     end
 
     def self.read_cached_data
@@ -130,7 +143,7 @@ module Cfc
     def self.parse_players(csv_data)
       lines = csv_data.lines
       # Skip header line
-      lines[1..-1].map do |line|
+      lines[1..].map do |line|
         parse_csv_line(line)
       end.compact
     end
@@ -161,7 +174,6 @@ module Cfc
 
       {
         cfc_id: cfc_id,
-        cfc_number: parts[0],
         expiry: expiry,
         last_name: last_name,
         first_name: first_name,
@@ -178,6 +190,7 @@ module Cfc
 
     def self.parse_int(value)
       return nil if value.nil? || value.to_s.empty? || value.to_s == "-"
+
       Integer(value)
     rescue ArgumentError
       nil
@@ -185,6 +198,7 @@ module Cfc
 
     def self.parse_date(value)
       return nil if value.nil? || value.to_s.empty? || value.to_s == "---"
+
       Date.parse(value.to_s).to_s
     rescue ArgumentError
       nil
@@ -192,13 +206,16 @@ module Cfc
 
     def self.clean_name(value)
       return nil if value.nil? || value.to_s.empty?
+
       cleaned = value.to_s.gsub(/^["\s]+/, "").gsub(/["\s]+$/, "")
       return nil if cleaned == "---" || cleaned == "." || cleaned.empty?
+
       cleaned
     end
 
     def self.clean_city(value)
       return nil if value.nil? || value.to_s.empty?
+
       value.to_s.gsub(/^["\s]+/, "").gsub(/["\s]+$/, "").gsub(/"/, "")
     end
   end

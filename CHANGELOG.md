@@ -1,5 +1,38 @@
 ## [Unreleased]
 
+## [0.3.0] - 2026-03-02
+
+### Added
+
+- New `show CFC_ID` command - displays detailed player information
+- New `history CFC_ID` command - shows rating history with optional `--from` and `--to` date filters
+- New `find` command - search for players by `--last_name`, `--first_name`, `--province`, and/or `--city` (supports partial matches)
+- New `cleanup` command - removes duplicate rating entries, keeping only the oldest when ratings haven't changed
+- `--ids` option to `diff` command - filter output to specific CFC IDs
+- `--ids-file` option to `diff`, `history`, and `show` commands - read CFC IDs from a file
+- `--cron` flag to `download` command - silent mode for cronjobs, exits 0 if new data, 1 if no change
+- Spinner animation in `diff` command to indicate progress during long operations
+- Archived downloads are saved to `~/.cfc-history/tdlist-YYYYMMDD.txt`
+
+### Changed
+
+- Migrated to Thor gem for command line parsing
+- CLI now shows help when called without parameters
+- Players absent from new downloads are marked as "retired" instead of "removed"
+- `diff` command now shows player name, city, and only ratings that actually changed
+- Retired players section hidden from summary when count is zero
+- Removed redundant `cfc_number` field (CFC ID is the canonical identifier)
+
+### Fixed
+
+- `diff` command now works without arguments - automatically uses the two most recent rating snapshots
+- Fixed deduplication logic in `save_players` - now properly checks if ratings changed before inserting
+- Fixed database result key handling in `diff` - converts string keys to symbols for consistency
+- Fixed fixture loading condition - now checks database state instead of cache file existence
+- Fixed SQL parameter binding in `get_current_ratings` - properly expands array for IN clause
+- Fixed false "retired" reporting - uses "as-of" date logic instead of exact date matching
+- Removed unused CSV parsing methods from `diff.rb`
+
 ## [0.2.0] - 2026-03-01
 
 - Add `download` command to fetch weekly CFC rating list from Google Storage

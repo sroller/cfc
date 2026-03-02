@@ -9,7 +9,7 @@ class TestDownloader < Minitest::Test
     line = '191362,2025-12-18,"---","---","ON",Scarborough",0,0,1092,1,,0'
     result = Cfc::Downloader.parse_csv_line(line)
 
-    assert_equal(191362, result[:cfc_id])
+    assert_equal(191_362, result[:cfc_id])
     assert_equal("2025-12-18", result[:expiry])
     assert_nil(result[:last_name])
     assert_nil(result[:first_name])
@@ -17,14 +17,13 @@ class TestDownloader < Minitest::Test
     assert_equal("Scarborough", result[:city])
     assert_equal(0, result[:rating])
     assert_equal(1092, result[:active_rating])
-    assert_equal("191362", result[:cfc_number])
   end
 
   def test_parse_csv_line_with_names
     line = '171117,2019-08-20," Lancman","Kyle","US",New York",1991,1991,1898,1806,75003732,0'
     result = Cfc::Downloader.parse_csv_line(line)
 
-    assert_equal(171117, result[:cfc_id])
+    assert_equal(171_117, result[:cfc_id])
     assert_equal("Lancman", result[:last_name])
     assert_equal("Kyle", result[:first_name])
     assert_equal("US", result[:province])
@@ -76,17 +75,17 @@ class TestDownloader < Minitest::Test
   end
 
   def test_parse_players
-    csv_data = <<-CSV
-"CFC#","Expiry","Last","First","Prov","City","Rating","High","Active Rtg","Active High","FIDE Number","FIDE Rating"
-191362,2025-12-18,"---","---","ON",Scarborough",0,0,1092,1,,0
-171117,2019-08-20," Lancman","Kyle","US",New York",1991,1991,1898,1806,75003732,0
-CSV
+    csv_data = <<~CSV
+      "CFC#","Expiry","Last","First","Prov","City","Rating","High","Active Rtg","Active High","FIDE Number","FIDE Rating"
+      191362,2025-12-18,"---","---","ON",Scarborough",0,0,1092,1,,0
+      171117,2019-08-20," Lancman","Kyle","US",New York",1991,1991,1898,1806,75003732,0
+    CSV
 
     players = Cfc::Downloader.parse_players(csv_data)
 
     assert_equal(2, players.length)
-    assert_equal(191362, players[0][:cfc_id])
-    assert_equal(171117, players[1][:cfc_id])
+    assert_equal(191_362, players[0][:cfc_id])
+    assert_equal(171_117, players[1][:cfc_id])
     assert_equal("Kyle", players[1][:first_name])
   end
 end
