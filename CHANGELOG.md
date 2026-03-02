@@ -11,6 +11,8 @@
 - Add `diff` command to compare rating lists with optional `--from` and `--to` parameters
 - Load fixtures chronologically to build historical rating data
 - Store database and backups in `/var/lib/chess/` for backup and debugging
+- Deduplicate rating records (only save when ratings actually change)
+- 75,391 unique players tracked with 111,393 rating snapshots
 
 ## [0.1.0] - 2026-03-01
 
