@@ -75,10 +75,10 @@ module Cfc
           cfc_id: row["cfc_id"],
           first_name: row["first_name"],
           last_name: row["last_name"],
+          province: row["province"],
           city: row["city"],
           rating: row["rating"],
-          active_rating: row["active_rating"],
-          fide_rating: row["fide_rating"]
+          active_rating: row["active_rating"]
         }
       end
     end
@@ -109,12 +109,12 @@ module Cfc
 
       # New players (in to but not in from)
       (to_hash.keys - from_hash.keys).each do |id|
-        changes[:new] << { cfc_id: id, **to_hash[id] }
+        changes[:new] << to_hash[id].dup
       end
 
       # Removed players (in from but not in to)
       (from_hash.keys - to_hash.keys).each do |id|
-        changes[:removed] << { cfc_id: id, **from_hash[id] }
+        changes[:removed] << from_hash[id].dup
       end
 
       # Changed players (in both but different)
@@ -122,12 +122,18 @@ module Cfc
         from_p = from_hash[id]
         to_p = to_hash[id]
 
-        next unless from_p != to_p
+        # Only track if national rating or active rating changed (ignore FIDE)
+        rating_changed = from_p[:rating] != to_p[:rating]
+        active_changed = from_p[:active_rating] != to_p[:active_rating]
+
+        next unless rating_changed || active_changed
 
         changes[:changed] << {
           cfc_id: id,
           from: from_p,
-          to: to_p
+          to: to_p,
+          rating_changed: rating_changed,
+          active_changed: active_changed
         }
       end
 
@@ -138,13 +144,18 @@ module Cfc
       puts "=== Rating Changes ==="
       puts
 
+      # Sort players by province, then city
+      sort_key = ->(p) { [p[:province] || "", p[:city] || "", p[:last_name] || "", p[:first_name] || ""] }
+
       # New players
       if changes[:new].any?
         puts "New Players: #{changes[:new].count}"
-        changes[:new].each do |p|
+        changes[:new].sort_by(&sort_key).each do |p|
           name = "#{p[:first_name]} #{p[:last_name]}"
+          province = p[:province]
           city = p[:city]
-          location = city ? " (#{city})" : ""
+          location_parts = [city, province].compact.join(", ")
+          location = location_parts ? " (#{location_parts})" : ""
           puts "  + #{p[:cfc_id]} #{name}#{location}: Rating: #{p[:rating]}, Active: #{p[:active_rating]}"
         end
         puts
@@ -153,35 +164,33 @@ module Cfc
       # Retired players (no longer in newer rating list) - only show if there are any
       if changes[:removed].any?
         puts "Retired Players: #{changes[:removed].count}"
-        changes[:removed].each do |p|
+        changes[:removed].sort_by(&sort_key).each do |p|
           name = "#{p[:first_name]} #{p[:last_name]}"
+          province = p[:province]
           city = p[:city]
-          location = city ? " (#{city})" : ""
+          location_parts = [city, province].compact.join(", ")
+          location = location_parts ? " (#{location_parts})" : ""
           puts "  - #{p[:cfc_id]} #{name}#{location}: Last Rating: #{p[:rating]}, Last Active: #{p[:active_rating]}"
         end
         puts
       end
 
-      # Changed players
+      # Changed players - only show if national rating or active rating changed
       if changes[:changed].any?
         puts "Changed Players: #{changes[:changed].count}"
-        changes[:changed].each do |c|
+        changes[:changed].sort_by(&sort_key).each do |c|
           name = "#{c[:to][:first_name]} #{c[:to][:last_name]}"
+          province = c[:to][:province]
           city = c[:to][:city]
-          location = city ? " (#{city})" : ""
-          puts "  #{c[:cfc_id]} #{name}#{location}:"
+          location_parts = [city, province].compact.join(", ")
+          location = location_parts ? " (#{location_parts})" : ""
 
-          # Only show ratings that changed
+          # Only show national rating and active rating changes (ignore FIDE)
           changes_list = []
-          changes_list << "Rating: #{c[:from][:rating]} -> #{c[:to][:rating]}" if c[:from][:rating] != c[:to][:rating]
-          if c[:from][:active_rating] != c[:to][:active_rating]
-            changes_list << "Active: #{c[:from][:active_rating]} -> #{c[:to][:active_rating]}"
-          end
-          if c[:from][:fide_rating] != c[:to][:fide_rating]
-            changes_list << "FIDE: #{c[:from][:fide_rating]} -> #{c[:to][:fide_rating]}"
-          end
+          changes_list << "Rating: #{c[:from][:rating]} -> #{c[:to][:rating]}" if c[:rating_changed]
+          changes_list << "Active: #{c[:from][:active_rating]} -> #{c[:to][:active_rating]}" if c[:active_changed]
 
-          puts "         #{changes_list.join(", ")}" unless changes_list.empty?
+          puts "  #{c[:cfc_id]} #{name}#{location}: #{changes_list.join(", ")}"
         end
         puts
       end

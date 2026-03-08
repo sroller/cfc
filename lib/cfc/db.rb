@@ -145,7 +145,7 @@ module Cfc
       # Get the latest rating for each player AS OF the given date (not exact match)
       @db.execute(<<-SQL, date)
         SELECT pr.cfc_id, pr.rating, pr.active_rating, pr.fide_rating,
-               p.first_name, p.last_name, p.city
+               p.first_name, p.last_name, p.province, p.city
         FROM player_ratings pr
         JOIN players p ON pr.cfc_id = p.cfc_id
         WHERE pr.id IN (

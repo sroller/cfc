@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    cfc (0.1.0)
+    cfc (0.3.0)
       csv (~> 1.0)
       sqlite3 (~> 2.0)
       thor (~> 1.0)
