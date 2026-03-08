@@ -6,7 +6,7 @@ A Ruby gem to manage player data from Chess Canada (CFC).
 
 - **Download** weekly CFC rating lists from Google Storage with ETag-based caching
 - **SQLite database** for storing player ratings with date tracking
-- **Rating history** - tracks full history per player (rating, active_rating, fide_rating over time)
+- **Rating history** - tracks full history per player (rating and active_rating over time)
 - **Diff command** - compare rating snapshots between dates with player details
 - **Find command** - search players by name, province, or city
 - **Show command** - display detailed player information
@@ -160,7 +160,6 @@ The SQLite database contains two tables:
 - `cfc_id` - unique player identifier (CFC membership number)
 - `rating` - current rating
 - `active_rating` - active rating
-- `fide_rating` - FIDE rating
 - `rating_date` - date of rating
 - `download_date` - date downloaded
 

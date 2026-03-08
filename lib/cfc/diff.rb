@@ -122,7 +122,7 @@ module Cfc
         from_p = from_hash[id]
         to_p = to_hash[id]
 
-        # Only track if national rating or active rating changed (ignore FIDE)
+        # Only track if national rating or active rating changed
         rating_changed = from_p[:rating] != to_p[:rating]
         active_changed = from_p[:active_rating] != to_p[:active_rating]
 
@@ -185,7 +185,6 @@ module Cfc
           location_parts = [city, province].compact.join(", ")
           location = location_parts ? " (#{location_parts})" : ""
 
-          # Only show national rating and active rating changes (ignore FIDE)
           changes_list = []
           changes_list << "Rating: #{c[:from][:rating]} -> #{c[:to][:rating]}" if c[:rating_changed]
           changes_list << "Active: #{c[:from][:active_rating]} -> #{c[:to][:active_rating]}" if c[:active_changed]

@@ -1,5 +1,10 @@
 ## [Unreleased]
 
+- Remove FIDE rating storage and display from the application
+- Remove `fide_rating` column from database schema
+- Remove FIDE number and rating parsing from CSV downloader
+- Remove FIDE rating from `show`, `history`, and `cleanup` commands
+
 ## [0.3.0] - 2026-03-02
 
 ### Added
@@ -40,7 +45,7 @@
 - Implement CSV parsing with data cleaning (quotes, whitespace, special values)
 - Add local caching (~/.cfc-cache) with 7-day expiry
 - Add comprehensive tests for downloader and database operations
-- Track full rating history per player (rating, active_rating, fide_rating over time)
+- Track full rating history per player (rating and active_rating over time)
 - Add `diff` command to compare rating lists with optional `--from` and `--to` parameters
 - Load fixtures chronologically to build historical rating data
 - Store database and backups in `/var/lib/chess/` for backup and debugging

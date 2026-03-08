@@ -32,9 +32,7 @@ class TestDb < Minitest::Test
         rating: 1500,
         high_rating: 1600,
         active_rating: 1500,
-        active_high_rating: 1600,
-        fide_number: "123456",
-        fide_rating: 1500
+        active_high_rating: 1600
       },
       {
         cfc_id: 100_002,
@@ -46,9 +44,7 @@ class TestDb < Minitest::Test
         rating: 1800,
         high_rating: 1900,
         active_rating: 1800,
-        active_high_rating: 1900,
-        fide_number: "789012",
-        fide_rating: 1800
+        active_high_rating: 1900
       }
     ]
 
@@ -81,9 +77,7 @@ class TestDb < Minitest::Test
         rating: 1500,
         high_rating: 1600,
         active_rating: 1500,
-        active_high_rating: 1600,
-        fide_number: nil,
-        fide_rating: nil
+        active_high_rating: 1600
       }
     ]
 

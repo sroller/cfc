@@ -10,9 +10,9 @@ module Cfc
   class Database
     INSERT_SQL = <<-SQL
       INSERT INTO player_ratings (
-        cfc_id, rating, active_rating, fide_rating,
+        cfc_id, rating, active_rating,
         rating_date, download_date
-      ) VALUES (:cfc_id, :rating, :active_rating, :fide_rating,
+      ) VALUES (:cfc_id, :rating, :active_rating,
                 :rating_date, :download_date)
     SQL
 
@@ -40,7 +40,6 @@ module Cfc
           cfc_id INTEGER NOT NULL,
           rating INTEGER,
           active_rating INTEGER,
-          fide_rating INTEGER,
           rating_date TEXT,
           download_date TEXT NOT NULL
         )
@@ -86,7 +85,6 @@ module Cfc
             cfc_id: player[:cfc_id],
             rating: player[:rating],
             active_rating: player[:active_rating],
-            fide_rating: player[:fide_rating],
             rating_date: download_date,
             download_date: download_date
           )
@@ -105,12 +103,10 @@ module Cfc
 
       latest_rating = latest["rating"]
       latest_active = latest["active_rating"]
-      latest_fide = latest["fide_rating"]
 
       !(
         latest_rating == player[:rating] &&
-        latest_active == player[:active_rating] &&
-        latest_fide == player[:fide_rating]
+        latest_active == player[:active_rating]
       )
     end
 
@@ -128,7 +124,7 @@ module Cfc
 
     def get_rating_history(cfc_id)
       @db.execute(<<-SQL, cfc_id)
-        SELECT rating_date, rating, active_rating, fide_rating
+        SELECT rating_date, rating, active_rating
         FROM player_ratings WHERE cfc_id = ?
         ORDER BY rating_date DESC
       SQL
@@ -136,7 +132,7 @@ module Cfc
 
     def get_rating_history_by_date(date)
       @db.execute(<<-SQL, date)
-        SELECT cfc_id, rating, active_rating, fide_rating
+        SELECT cfc_id, rating, active_rating
         FROM player_ratings WHERE rating_date = ?
       SQL
     end
@@ -144,7 +140,7 @@ module Cfc
     def get_rating_history_by_date_with_player_info(date)
       # Get the latest rating for each player AS OF the given date (not exact match)
       @db.execute(<<-SQL, date)
-        SELECT pr.cfc_id, pr.rating, pr.active_rating, pr.fide_rating,
+        SELECT pr.cfc_id, pr.rating, pr.active_rating,
                p.first_name, p.last_name, p.province, p.city
         FROM player_ratings pr
         JOIN players p ON pr.cfc_id = p.cfc_id
@@ -158,7 +154,7 @@ module Cfc
 
     def get_player(cfc_id)
       result = @db.execute(<<-SQL, cfc_id)
-        SELECT p.*, r.rating, r.active_rating, r.fide_rating, r.rating_date
+        SELECT p.*, r.rating, r.active_rating, r.rating_date
         FROM players p
         LEFT JOIN player_ratings r ON p.cfc_id = r.cfc_id
         WHERE p.cfc_id = ?
@@ -170,7 +166,7 @@ module Cfc
 
     def get_player_history(cfc_id, from_date: nil, to_date: nil)
       sql = <<-SQL
-        SELECT rating_date, rating, active_rating, fide_rating
+        SELECT rating_date, rating, active_rating
         FROM player_ratings
         WHERE cfc_id = ?
       SQL
@@ -193,7 +189,7 @@ module Cfc
 
     def find_players(last_name: nil, first_name: nil, province: nil, city: nil)
       sql = <<-SQL
-        SELECT p.*, r.rating, r.active_rating, r.fide_rating, r.rating_date
+        SELECT p.*, r.rating, r.active_rating, r.rating_date
         FROM players p
         LEFT JOIN player_ratings r ON p.cfc_id = r.cfc_id
         WHERE r.id = (SELECT MAX(id) FROM player_ratings WHERE cfc_id = p.cfc_id)

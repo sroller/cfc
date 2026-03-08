@@ -153,9 +153,9 @@ module Cfc
       line = line.encode("UTF-8", "binary", invalid: :replace, undef: :replace, replace: "?")
 
       # Split by comma (simple split since CSV is malformed)
-      # Format: CFC#,Expiry,Last,First,Prov,City,Rating,High,Active Rtg,Active High,FIDE Number,FIDE Rating
+      # Format: CFC#,Expiry,Last,First,Prov,City,Rating,High,Active Rtg,Active High
       parts = line.split(",")
-      return nil if parts.length < 12
+      return nil if parts.length < 10
 
       # Clean each field
       cfc_id = parse_int(parts[0])
@@ -169,8 +169,6 @@ module Cfc
       high_rating = parse_int(parts[7])
       active_rating = parse_int(parts[8])
       active_high_rating = parse_int(parts[9])
-      fide_number = parts[10].to_s.strip
-      fide_rating = parse_int(parts[11])
 
       {
         cfc_id: cfc_id,
@@ -182,9 +180,7 @@ module Cfc
         rating: rating,
         high_rating: high_rating,
         active_rating: active_rating,
-        active_high_rating: active_high_rating,
-        fide_number: fide_number,
-        fide_rating: fide_rating
+        active_high_rating: active_high_rating
       }
     end
 

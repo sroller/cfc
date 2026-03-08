@@ -12,7 +12,7 @@ module Cfc
 
         # Get all rating entries ordered by cfc_id and rating_date (oldest first)
         entries = db.db.execute(<<-SQL)
-          SELECT id, cfc_id, rating, active_rating, fide_rating, rating_date
+          SELECT id, cfc_id, rating, active_rating, rating_date
           FROM player_ratings
           ORDER BY cfc_id, rating_date ASC, id ASC
         SQL
@@ -27,8 +27,7 @@ module Cfc
           key = [
             entry["cfc_id"],
             entry["rating"],
-            entry["active_rating"],
-            entry["fide_rating"]
+            entry["active_rating"]
           ]
 
           if key == last_key

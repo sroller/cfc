@@ -73,9 +73,8 @@ module Cfc
           date = record["rating_date"]
           rating = record["rating"] || 0
           active = record["active_rating"] || 0
-          fide = record["fide_rating"] || 0
 
-          puts "#{date}: Rating: #{rating}, Active: #{active}, FIDE: #{fide}"
+          puts "#{date}: Rating: #{rating}, Active: #{active}"
         end
 
         puts

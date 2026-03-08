@@ -49,7 +49,6 @@ module Cfc
         city = player["city"]
         rating = player["rating"] || 0
         active_rating = player["active_rating"] || 0
-        fide_rating = player["fide_rating"] || 0
         rating_date = player["rating_date"]
 
         puts "=== Player Information ==="
@@ -62,7 +61,6 @@ module Cfc
         puts "Latest Rating Information (#{rating_date}):"
         puts "  Rating:       #{rating}"
         puts "  Active:       #{active_rating}"
-        puts "  FIDE:         #{fide_rating}" if fide_rating&.positive?
       end
     end
   end

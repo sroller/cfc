@@ -6,7 +6,7 @@ require "stringio"
 
 class TestDownloader < Minitest::Test
   def test_parse_csv_line
-    line = '191362,2025-12-18,"---","---","ON",Scarborough",0,0,1092,1,,0'
+    line = '191362,2025-12-18,"---","---","ON",Scarborough",0,0,1092,1'
     result = Cfc::Downloader.parse_csv_line(line)
 
     assert_equal(191_362, result[:cfc_id])
@@ -20,7 +20,7 @@ class TestDownloader < Minitest::Test
   end
 
   def test_parse_csv_line_with_names
-    line = '171117,2019-08-20," Lancman","Kyle","US",New York",1991,1991,1898,1806,75003732,0'
+    line = '171117,2019-08-20," Lancman","Kyle","US",New York",1991,1991,1898,1806'
     result = Cfc::Downloader.parse_csv_line(line)
 
     assert_equal(171_117, result[:cfc_id])
@@ -30,8 +30,6 @@ class TestDownloader < Minitest::Test
     assert_equal("New York", result[:city])
     assert_equal(1991, result[:rating])
     assert_equal(1898, result[:active_rating])
-    assert_equal("75003732", result[:fide_number])
-    assert_equal(0, result[:fide_rating])
   end
 
   def test_parse_int_with_valid_numbers
@@ -76,9 +74,9 @@ class TestDownloader < Minitest::Test
 
   def test_parse_players
     csv_data = <<~CSV
-      "CFC#","Expiry","Last","First","Prov","City","Rating","High","Active Rtg","Active High","FIDE Number","FIDE Rating"
-      191362,2025-12-18,"---","---","ON",Scarborough",0,0,1092,1,,0
-      171117,2019-08-20," Lancman","Kyle","US",New York",1991,1991,1898,1806,75003732,0
+      "CFC#","Expiry","Last","First","Prov","City","Rating","High","Active Rtg","Active High"
+      191362,2025-12-18,"---","---","ON",Scarborough",0,0,1092,1
+      171117,2019-08-20," Lancman","Kyle","US",New York",1991,1991,1898,1806
     CSV
 
     players = Cfc::Downloader.parse_players(csv_data)
