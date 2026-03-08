@@ -38,9 +38,7 @@ module Cfc
           location = [city, province].compact.join(", ")
           location_str = location.empty? ? "" : " (#{location})"
 
-          puts "#{cfc_id}: #{name}#{location_str}"
-          puts "         Rating: #{rating}, Active: #{active_rating}"
-          puts
+          puts "#{cfc_id}: #{name}#{location_str} - Rating: #{rating}, Active: #{active_rating}"
         end
       end
     end
