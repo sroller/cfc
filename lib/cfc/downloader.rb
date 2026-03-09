@@ -172,7 +172,7 @@ module Cfc
 
       {
         cfc_id: cfc_id,
-        expiry: expiry,
+        expire_date: expiry,
         last_name: last_name,
         first_name: first_name,
         province: province,

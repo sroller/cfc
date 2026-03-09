@@ -7,12 +7,11 @@ require "date"
 
 module Cfc
   class Diff
-    def self.run(from: nil, to: nil, ids: nil, ids_file: nil)
-      # Start spinner thread
-      spinner = Thread.new { run_spinner }
+    def self.run(from: nil, to: nil, ids: nil, ids_file: nil, show_spinner: true, db_path: nil)
+      spinner = Thread.new { run_spinner } if show_spinner
 
       # Get ratings from database for from and to dates
-      db = Database.new
+      db = Database.new(db_path)
 
       # Get default dates if not provided (latest two available snapshots)
       from, to = get_default_dates(db) if from.nil? || to.nil?
@@ -26,8 +25,8 @@ module Cfc
       db.close
 
       # Stop spinner
-      spinner.kill
-      print "\r\e[K" # Clear the spinner line
+      spinner&.kill
+      print "\r\e[K" if spinner # Clear the spinner line only if spinner was running
 
       if from_players.empty? || to_players.empty?
         puts "Could not find data for #{from} and #{to}"
@@ -64,7 +63,7 @@ module Cfc
     def self.parse_ids_file(filepath)
       return nil unless File.exist?(filepath)
 
-      File.readlines(filepath).map(&:strip).reject(&:empty?).map(&:to_i)
+      File.readlines(filepath).map(&:strip).reject(&:empty?).map(&:to_i).reject(&:zero?)
     end
 
     def self.get_players_by_date(db, date)
@@ -78,7 +77,8 @@ module Cfc
           province: row["province"],
           city: row["city"],
           rating: row["rating"],
-          active_rating: row["active_rating"]
+          active_rating: row["active_rating"],
+          expire_date: row["expire_date"]
         }
       end
     end
@@ -154,9 +154,10 @@ module Cfc
           name = "#{p[:first_name]} #{p[:last_name]}"
           province = p[:province]
           city = p[:city]
-          location_parts = [city, province].compact.join(", ")
-          location = location_parts ? " (#{location_parts})" : ""
-          puts "  + #{p[:cfc_id]} #{name}#{location}: Rating: #{p[:rating]}, Active: #{p[:active_rating]}"
+          location_parts = [city, province].compact
+          location = location_parts.any? ? " (#{location_parts.join(", ")})" : ""
+          expire_info = display_expire_info(p[:expire_date])
+          puts "  + #{p[:cfc_id]} #{name}#{location}: Rating: #{p[:rating]}, Active: #{p[:active_rating]}, #{expire_info}"
         end
         puts
       end
@@ -168,9 +169,10 @@ module Cfc
           name = "#{p[:first_name]} #{p[:last_name]}"
           province = p[:province]
           city = p[:city]
-          location_parts = [city, province].compact.join(", ")
-          location = location_parts ? " (#{location_parts})" : ""
-          puts "  - #{p[:cfc_id]} #{name}#{location}: Last Rating: #{p[:rating]}, Last Active: #{p[:active_rating]}"
+          location_parts = [city, province].compact
+          location = location_parts.any? ? " (#{location_parts.join(", ")})" : ""
+          expire_info = display_expire_info(p[:expire_date])
+          puts "  - #{p[:cfc_id]} #{name}#{location}: Last Rating: #{p[:rating]}, Last Active: #{p[:active_rating]}, #{expire_info}"
         end
         puts
       end
@@ -182,14 +184,15 @@ module Cfc
           name = "#{c[:to][:first_name]} #{c[:to][:last_name]}"
           province = c[:to][:province]
           city = c[:to][:city]
-          location_parts = [city, province].compact.join(", ")
-          location = location_parts ? " (#{location_parts})" : ""
+          location_parts = [city, province].compact
+          location = location_parts.any? ? " (#{location_parts.join(", ")})" : ""
+          expire_info = display_expire_info(c[:to][:expire_date])
 
           changes_list = []
           changes_list << "Rating: #{c[:from][:rating]} -> #{c[:to][:rating]}" if c[:rating_changed]
           changes_list << "Active: #{c[:from][:active_rating]} -> #{c[:to][:active_rating]}" if c[:active_changed]
 
-          puts "  #{c[:cfc_id]} #{name}#{location}: #{changes_list.join(", ")}"
+          puts "  #{c[:cfc_id]} #{name}#{location}: #{changes_list.join(", ")}, #{expire_info}"
         end
         puts
       end
@@ -199,6 +202,17 @@ module Cfc
       puts "  New: #{changes[:new].count}"
       puts "  Retired: #{changes[:removed].count}" if changes[:removed].any?
       puts "  Changed: #{changes[:changed].count}"
+    end
+
+    def self.display_expire_info(expire_date)
+      return "Membership: Unknown" if expire_date.nil? || expire_date.empty?
+
+      # Check for life membership (more than 50 years in the future)
+      if Cfc::Commands::Show.is_life_membership?(expire_date)
+        "Membership: LIFE"
+      else
+        "Membership: #{expire_date}"
+      end
     end
   end
 end
