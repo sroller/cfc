@@ -4,6 +4,7 @@ require "csv"
 require "stringio"
 require "fileutils"
 require "date"
+require_relative "commands/show"
 
 module Cfc
   class Diff

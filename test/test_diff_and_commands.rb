@@ -571,6 +571,14 @@ class TestDiff < Minitest::Test
     # About 50 years from now (2026 + 50 = 2076)
     refute_equal("Membership: LIFE", Cfc::Diff.display_expire_info("2075-12-31"))
   end
+
+  def test_display_expire_info_with_nil
+    assert_equal("Membership: Unknown", Cfc::Diff.display_expire_info(nil))
+  end
+
+  def test_display_expire_info_with_empty_string
+    assert_equal("Membership: Unknown", Cfc::Diff.display_expire_info(""))
+  end
 end
 
 class TestCommandsHistory < Minitest::Test
