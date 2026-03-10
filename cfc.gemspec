@@ -10,12 +10,12 @@ Gem::Specification.new do |spec|
 
   spec.summary = "CFC rating data manager for Chess Canada"
   spec.description = "A Ruby gem to download, store, and compare Chess Canada (CFC) player ratings"
-  spec.homepage = "https://github.com/steffen-roller/cfc"
+  spec.homepage = "https://github.com/sroller/cfc"
   spec.required_ruby_version = ">= 3.2.0"
 
   spec.metadata["homepage_uri"] = spec.homepage
-  spec.metadata["source_code_uri"] = "https://github.com/steffen-roller/cfc"
-  spec.metadata["changelog_uri"] = "https://github.com/steffen-roller/cfc/blob/main/CHANGELOG.md"
+  spec.metadata["source_code_uri"] = "https://github.com/sroller/cfc"
+  spec.metadata["changelog_uri"] = "https://github.com/sroller/cfc/blob/main/CHANGELOG.md"
 
   # Specify which files should be added to the gem when it is released.
   # The `git ls-files -z` loads the files in the RubyGem that have been added into git.

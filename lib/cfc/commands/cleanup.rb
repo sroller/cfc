@@ -5,8 +5,8 @@ require_relative "../db"
 module Cfc
   module Commands
     class Cleanup
-      def self.run
-        db = Database.new
+      def self.run(db_path: nil)
+        db = Database.new(db_path)
 
         puts "Analyzing rating entries for duplicates..."
 

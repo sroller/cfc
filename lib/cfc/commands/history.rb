@@ -5,7 +5,7 @@ require_relative "../db"
 module Cfc
   module Commands
     class History
-      def self.run(cfc_id, from: nil, to: nil, ids_file: nil)
+      def self.run(cfc_id, from: nil, to: nil, ids_file: nil, db_path: nil)
         # Parse IDs from file if provided
         ids = if ids_file
                 parse_ids_file(ids_file)
@@ -13,7 +13,7 @@ module Cfc
                 [Integer(cfc_id)]
               end
 
-        db = Database.new
+        db = Database.new(db_path)
 
         # Format dates if provided
         from_date = format_date(from) if from

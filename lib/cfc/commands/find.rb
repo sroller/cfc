@@ -5,8 +5,8 @@ require_relative "../db"
 module Cfc
   module Commands
     class Find
-      def self.run(last_name: nil, first_name: nil, province: nil, city: nil)
-        db = Database.new
+      def self.run(last_name: nil, first_name: nil, province: nil, city: nil, db_path: nil)
+        db = Database.new(db_path)
         players = db.find_players(
           last_name: last_name,
           first_name: first_name,

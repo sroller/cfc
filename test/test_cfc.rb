@@ -1,6 +1,10 @@
 # frozen_string_literal: true
 
 require "test_helper"
+require "cfc/downloader"
+require "cfc/db"
+require "stringio"
+require "tmpdir"
 
 class TestCfc < Minitest::Test
   def test_that_it_has_a_version_number

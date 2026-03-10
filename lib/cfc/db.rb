@@ -18,8 +18,8 @@ module Cfc
 
     PLAYER_INSERT_SQL = <<-SQL
       INSERT OR REPLACE INTO players (
-        cfc_id, last_name, first_name, province, city
-      ) VALUES (:cfc_id, :last_name, :first_name, :province, :city)
+        cfc_id, last_name, first_name, province, city, expire_date
+      ) VALUES (:cfc_id, :last_name, :first_name, :province, :city, :expire_date)
     SQL
 
     BACKUP_DIR = "/var/lib/chess"
@@ -51,7 +51,8 @@ module Cfc
           last_name TEXT,
           first_name TEXT,
           province TEXT,
-          city TEXT
+          city TEXT,
+          expire_date TEXT
         )
       SQL
 
@@ -74,7 +75,8 @@ module Cfc
             last_name: player[:last_name],
             first_name: player[:first_name],
             province: player[:province],
-            city: player[:city]
+            city: player[:city],
+            expire_date: player[:expire_date]
           )
 
           # Save rating history (with deduplication if enabled)
@@ -140,7 +142,7 @@ module Cfc
     def get_rating_history_by_date_with_player_info(date)
       # Get the latest rating for each player AS OF the given date (not exact match)
       @db.execute(<<-SQL, date)
-        SELECT pr.cfc_id, pr.rating, pr.active_rating,
+        SELECT pr.cfc_id, pr.rating, pr.active_rating, p.expire_date,
                p.first_name, p.last_name, p.province, p.city
         FROM player_ratings pr
         JOIN players p ON pr.cfc_id = p.cfc_id
@@ -154,7 +156,8 @@ module Cfc
 
     def get_player(cfc_id)
       result = @db.execute(<<-SQL, cfc_id)
-        SELECT p.*, r.rating, r.active_rating, r.rating_date
+        SELECT p.cfc_id, p.last_name, p.first_name, p.province, p.city, p.expire_date,
+               r.rating, r.active_rating, r.rating_date
         FROM players p
         LEFT JOIN player_ratings r ON p.cfc_id = r.cfc_id
         WHERE p.cfc_id = ?
@@ -189,7 +192,8 @@ module Cfc
 
     def find_players(last_name: nil, first_name: nil, province: nil, city: nil)
       sql = <<-SQL
-        SELECT p.*, r.rating, r.active_rating, r.rating_date
+        SELECT p.cfc_id, p.last_name, p.first_name, p.province, p.city, p.expire_date,
+               r.rating, r.active_rating, r.rating_date
         FROM players p
         LEFT JOIN player_ratings r ON p.cfc_id = r.cfc_id
         WHERE r.id = (SELECT MAX(id) FROM player_ratings WHERE cfc_id = p.cfc_id)
