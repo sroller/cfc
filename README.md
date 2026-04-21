@@ -55,7 +55,7 @@ This will:
 
 Options:
 - `--force` - Force download even if cache is valid
-- `--cron` - Silent mode for cronjobs (exits 0 if new data, 1 if no change)
+
 
 ### Compare Rating Snapshots
 
@@ -85,7 +85,7 @@ Options:
 - `--ids-file FILE` - Read CFC IDs from file (one per line)
 - `--format FORMAT` - Output format: text (default), html, csv
 - `--mail EMAILS` - Comma-separated list of emails to send output to (defaults to HTML)
-- `--cron` - Cron mode - poll every hour starting at 12:00 Thursday until update detected. Use with `--mail` to email results when update is found
+
 
 ### Output Formats
 
@@ -115,15 +115,6 @@ Emails are sent via SMTP. Configure via environment variables:
 - `CFC_MAIL_FROM` - Sender address (default: `cfc@localhost`)
 - `CFC_SMTP_SERVER` - SMTP server (default: `localhost`)
 - `CFC_SMTP_PORT` - SMTP port (default: `25`)
-
-### Cron Mode with Email
-
-Run the diff command in cron mode to automatically detect Thursday rating updates:
-
-```bash
-# Poll starting at 12:00 Thursday, email results when update detected
-cfc diff --cron --ids-file=data/cccg.ids --mail=steffen.roller@gmail.com
-```
 
 ### Example Output
 

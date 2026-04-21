@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
 require "csv"
-require "stringio"
-require "fileutils"
 require "date"
 require_relative "commands/show"
 require_relative "output_formatter"
@@ -10,12 +8,7 @@ require_relative "mailer"
 
 module Cfc
   class Diff
-    def self.run(from: nil, to: nil, ids: nil, ids_file: nil, show_spinner: true, db_path: nil, cron: false, format: nil, mail: nil)
-      if cron
-        run_cron(ids_file: ids_file, db_path: db_path, mail: mail)
-        return
-      end
-
+    def self.run(from: nil, to: nil, ids: nil, ids_file: nil, show_spinner: true, db_path: nil, format: nil, mail: nil)
       # Default to HTML format when mailing
       format = "html" if mail && format.nil?
 
@@ -74,67 +67,6 @@ module Cfc
           Mailer.send_mail(mail, "Rating Changes (#{from} to #{to})", output)
         end
       end
-    end
-
-    def self.run_cron(ids_file: nil, db_path: nil, check_interval: 1103, mail: nil)
-      loop do
-        db = Database.new(db_path)
-        from, to = get_default_dates(db)
-        db.close
-
-        output = capture_diff_output(from: from, to: to, ids_file: ids_file, db_path: db_path)
-
-        if diff_has_changes?(output)
-          puts output
-
-          if mail
-            # Generate HTML output for email
-            html_output = capture_diff_output_html(from: from, to: to, ids_file: ids_file, db_path: db_path)
-            date_range = "#{from} to #{to}"
-            Mailer.send_mail(mail, "Rating Changes Detected (#{date_range})", html_output)
-          end
-
-          $stderr.puts "Update detected at #{Time.now.strftime("%Y-%m-%d %H:%M:%S")}"
-          return
-        end
-
-        $stderr.puts "[#{Time.now.strftime("%Y-%m-%d %H:%M:%S")}] No update yet, checking again in 1 hour..."
-        sleep(check_interval)
-      end
-    end
-
-    def self.capture_diff_output_html(from:, to:, ids_file: nil, db_path: nil)
-      io = StringIO.new
-      original_stdout = $stdout
-      $stdout = io
-
-      begin
-        run(from: from, to: to, ids_file: ids_file, show_spinner: false, db_path: db_path, format: "html")
-      ensure
-        $stdout = original_stdout
-      end
-
-      io.string
-    end
-
-    def self.capture_diff_output(from:, to:, ids_file: nil, db_path: nil)
-      io = StringIO.new
-      original_stdout = $stdout
-      $stdout = io
-
-      begin
-        run(from: from, to: to, ids_file: ids_file, show_spinner: false, db_path: db_path)
-      ensure
-        $stdout = original_stdout
-      end
-
-      io.string
-    end
-
-    def self.diff_has_changes?(output)
-      output.include?("New Players:") ||
-        output.include?("Retired Players:") ||
-        output.include?("Changed Players:")
     end
 
     def self.run_spinner

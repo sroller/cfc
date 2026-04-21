@@ -25,16 +25,11 @@ module Cfc
     option :to, desc: "End date (YYYY-MM-DD or YYYYMMDD)", type: :string
     option :ids, desc: "Comma-separated list of CFC IDs to filter", type: :string
     option :ids_file, desc: "File containing CFC IDs (one per line)", type: :string
-    option :cron, desc: "Cron mode - poll every hour starting at 12:00 Thursday until update detected. Use --mail to send results when update is found", type: :boolean, default: false
     option :format, desc: "Output format: text (default), html, csv", type: :string, default: "text"
     option :mail, desc: "Comma-separated list of email addresses to send output to", type: :string
     def diff
       if options[:ids] && options[:ids_file]
         $stderr.puts "Error: Cannot use both --ids and --ids_file options"
-        exit(1)
-      end
-      if options[:cron] && options[:ids_file].nil?
-        $stderr.puts "Error: --cron requires --ids-file option"
         exit(1)
       end
       if options[:from] && !CLI.valid_date_format?(options[:from])
@@ -49,7 +44,7 @@ module Cfc
         $stderr.puts "Error: Invalid format '#{options[:format]}'. Use text, html, or csv"
         exit(1)
       end
-      Diff.run(from: options[:from], to: options[:to], ids: options[:ids], ids_file: options[:ids_file], cron: options[:cron], format: options[:format], mail: options[:mail])
+      Diff.run(from: options[:from], to: options[:to], ids: options[:ids], ids_file: options[:ids_file], format: options[:format], mail: options[:mail])
     end
 
     desc "history CFC_ID", "Show rating history for a player"

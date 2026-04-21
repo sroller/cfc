@@ -589,62 +589,6 @@ class TestDiff < Minitest::Test
     refute_equal("Membership: LIFE", Cfc::Diff.display_expire_info("2075-12-31"))
   end
 
-  # --- cron tests ---
-  def test_diff_has_changes_with_new_players
-    output = "=== Rating Changes ===\n\nNew Players: 1\n"
-    assert(Cfc::Diff.diff_has_changes?(output))
-  end
-
-  def test_diff_has_changes_with_retired_players
-    output = "=== Rating Changes ===\n\nRetired Players: 1\n"
-    assert(Cfc::Diff.diff_has_changes?(output))
-  end
-
-  def test_diff_has_changes_with_changed_players
-    output = "=== Rating Changes ===\n\nChanged Players: 1\n"
-    assert(Cfc::Diff.diff_has_changes?(output))
-  end
-
-  def test_diff_has_changes_with_no_changes
-    output = "=== Rating Changes ===\n\nSummary:\n  New: 0\n  Changed: 0\n"
-    refute(Cfc::Diff.diff_has_changes?(output))
-  end
-
-  def test_diff_has_changes_with_empty_output
-    refute(Cfc::Diff.diff_has_changes?(""))
-  end
-
-  def test_run_cron_detects_change
-    # With existing data that has changes, cron should detect and return
-    output = capture_io do
-      Cfc::Diff.run_cron(ids_file: nil, db_path: @db_path, check_interval: 0.1)
-    end
-
-    refute_nil(output)
-    assert_match(/Update detected/, output)
-  end
-
-  def test_run_cron_with_mail_sends_email
-    emails_sent = []
-
-    # Mock Mailer to track email sends
-    original_send = Cfc::Mailer.method(:send_mail)
-    Cfc::Mailer.define_singleton_method(:send_mail) do |recipients, subject, body, from: nil|
-      emails_sent << { recipients: recipients, subject: subject, body: body }
-    end
-
-    output = capture_io do
-      Cfc::Diff.run_cron(ids_file: nil, db_path: @db_path, check_interval: 0.1, mail: "test@example.com")
-    end
-
-    assert_equal(1, emails_sent.length)
-    assert_match(/Rating Changes Detected/, emails_sent[0][:subject])
-    assert_includes(emails_sent[0][:recipients], "test@example.com")
-    assert_match(/<!DOCTYPE html>/, emails_sent[0][:body])
-  ensure
-    Cfc::Mailer.define_singleton_method(:send_mail, original_send)
-  end
-
   # --- normalize_date tests ---
   def test_normalize_date_yyyymmdd_format
     assert_equal("2026-01-01", Cfc::Diff.normalize_date("20260101"))

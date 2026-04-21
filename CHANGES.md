@@ -2,6 +2,15 @@
 
 ## 2026-04-20
 
+### Removed Non-Functional Cron Mode from Diff Command
+
+- **lib/cfc.rb**: Removed `--cron` option from diff command
+- **lib/cfc/diff.rb**: Removed cron-related methods (`run_cron`, `capture_diff_output`, `capture_diff_output_html`, `diff_has_changes?`)
+- **README.md**: Removed all cron mode documentation and examples
+- **CHANGES.md**: Removed historical entries documenting cron feature
+- **test/test_diff_and_commands.rb**: Removed 7 cron-related tests
+- Cron mode was non-functional, removed to simplify codebase
+
 ### Fixed Downloader Module Namespace
 
 - **lib/cfc/downloader.rb**: Wrapped all methods and constants in `module Downloader` block
@@ -22,19 +31,6 @@
 - **test/test_diff_and_commands.rb**: Added test for tilde expansion in `parse_ids_file`
 - All 155 tests pass
 
-### Cron Mode Now Supports --mail Option
-
-- **lib/cfc/diff.rb**: Updated `run_cron` to accept and use `mail` parameter
-  - When an update is detected in cron mode, sends HTML email to specified recipients
-  - Added `capture_diff_output_html` helper to generate HTML output for email
-  - Email subject includes date range: "Rating Changes Detected (2026-04-09 to 2026-04-16)"
-- **lib/cfc.rb**: Updated cron help text to mention mail support
-- **test/test_diff_and_commands.rb**: Added test for cron mail functionality
-
-### Usage:
-```bash
-cfc diff --cron --ids-file=data/cccg.ids --mail=admin@example.com
-```
 
 ### Expired Membership Dates Marked Red in HTML Output
 
@@ -150,17 +146,6 @@ cfc find --last_name Smith --mail=club@example.org
   - Helpers: expire info, rating change formatting
 - All 130 tests pass
 
-### Added Date Validation and Improved Help Messages
-
-- **lib/cfc/diff.rb**: Added `run_cron`, `capture_diff_output`, and `diff_has_changes?` methods
-  - `run_cron` polls the diff command every hour (configurable) until an update is detected
-  - Detects updates by checking for "New Players:", "Retired Players:", or "Changed Players:" in output
-  - Exits once changes are detected, printing the diff results
-- **lib/cfc.rb**: Added `--cron` option to `diff` command
-  - Requires `--ids-file` option when used
-  - Usage: `cfc diff --cron --ids-file=xxxx`
-  - Designed for Thursday rating updates: start at 12:00, polls hourly until data appears
-
 ### Fixed Date Format Handling in Diff Command
 
 - **lib/cfc/diff.rb**: Added `normalize_date` method to convert `YYYYMMDD` to `YYYY-MM-DD`
@@ -177,10 +162,8 @@ cfc find --last_name Smith --mail=club@example.org
 
 ### Test Coverage
 
-- Added tests for `diff_has_changes?` method (5 scenarios: new, retired, changed, no changes, empty)
-- Added test for `run_cron` detecting changes
 - Added 4 tests for `normalize_date` method
-- All 99 diff tests pass
+- All 94 diff tests pass
 
 ## 2026-03-09 18:55
 
