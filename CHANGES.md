@@ -2,6 +2,13 @@
 
 ## 2026-04-20
 
+### Fixed Download Cron Silent Mode
+
+- **lib/cfc/downloader.rb**: Fixed cron mode to be truly silent
+  - Changed `unless cron && result` to `unless cron`
+  - Previously output "Loaded latest cached data" even in cron mode
+  - Now correctly suppresses all output when `--cron` flag is used
+
 ### Removed Non-Functional Cron Mode from Diff Command
 
 - **lib/cfc.rb**: Removed `--cron` option from diff command

@@ -52,7 +52,7 @@ module Cfc
       db.close if db
     end
 
-    $stderr.puts "Loaded latest cached data" unless cron && result
+    $stderr.puts "Loaded latest cached data" unless cron
     result
   rescue StandardError
     false
