@@ -128,6 +128,47 @@ module Cfc
       )
     end
 
+    desc "ids SUBCOMMAND FILEPATH", "Manage IDs files (list, add, remove, validate)"
+    option :name, desc: "Custom name for add subcommand", type: :string
+    def ids(subcommand = nil, filepath = nil, *args)
+      require_relative "cfc/commands/ids"
+      require "fileutils"
+
+      unless subcommand && filepath
+        $stderr.puts "Error: Subcommand and filepath are required"
+        $stderr.puts "Usage: cfc ids list FILEPATH"
+        $stderr.puts "       cfc ids add FILEPATH CFC_ID [--name NAME]"
+        $stderr.puts "       cfc ids remove FILEPATH CFC_ID"
+        $stderr.puts "       cfc ids validate FILEPATH"
+        exit(1)
+      end
+
+      case subcommand
+      when "list"
+        Commands::Ids.list(filepath)
+      when "add"
+        cfc_id = args.first
+        unless cfc_id
+          $stderr.puts "Error: CFC ID is required for add subcommand"
+          exit(1)
+        end
+        Commands::Ids.add(filepath, cfc_id, options[:name])
+      when "remove"
+        cfc_id = args.first
+        unless cfc_id
+          $stderr.puts "Error: CFC ID is required for remove subcommand"
+          exit(1)
+        end
+        Commands::Ids.remove(filepath, cfc_id)
+      when "validate"
+        Commands::Ids.validate(filepath)
+      else
+        $stderr.puts "Error: Unknown subcommand '#{subcommand}'"
+        $stderr.puts "Available subcommands: list, add, remove, validate"
+        exit(1)
+      end
+    end
+
     desc "cleanup", "Remove duplicate rating entries (keep oldest when ratings unchanged)"
     def cleanup
       require_relative "cfc/commands/cleanup"

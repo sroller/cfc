@@ -203,6 +203,37 @@ Remove duplicate rating entries (keeps oldest when ratings unchanged):
 cfc cleanup
 ```
 
+### Manage IDs Files
+
+Manage player ID lists for use with diff, history, and show commands:
+
+```bash
+# List IDs with player names
+cfc ids list data/cccg.ids
+
+# Add a player ID (auto-looks up name)
+cfc ids add data/cccg.ids 151181
+
+# Add with custom name
+cfc ids add data/cccg.ids 151181 "John Doe"
+
+# Remove a player ID
+cfc ids remove data/cccg.ids 151181
+
+# Validate all IDs exist in database
+cfc ids validate data/cccg.ids
+```
+
+IDs files support name annotations for human readability (names are ignored during parsing):
+
+```
+# Player list for CCCG
+100198 Wil Adams
+101142 Azeez Agbaje
+# New members
+151181 John Smith
+```
+
 ## Architecture
 
 ### Database Schema

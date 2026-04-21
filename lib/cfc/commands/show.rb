@@ -61,7 +61,7 @@ module Cfc
         filepath = File.expand_path(filepath)
         return [] unless File.exist?(filepath)
 
-        File.readlines(filepath).map(&:strip).reject(&:empty?).map(&:to_i)
+        File.readlines(filepath).map(&:strip).reject(&:empty?).reject { |l| l.start_with?("#") }.map { |l| l.split.first.to_i }
       end
 
       def self.display_player_info(db, cfc_id)

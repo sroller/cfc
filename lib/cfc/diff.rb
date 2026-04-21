@@ -97,7 +97,7 @@ module Cfc
       filepath = File.expand_path(filepath)
       return nil unless File.exist?(filepath)
 
-      File.readlines(filepath).map(&:strip).reject(&:empty?).map(&:to_i).reject(&:zero?)
+      File.readlines(filepath).map(&:strip).reject(&:empty?).reject { |l| l.start_with?("#") }.map { |l| l.split.first.to_i }.reject(&:zero?)
     end
 
     def self.get_players_by_date(db, date)

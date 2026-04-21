@@ -2,6 +2,31 @@
 
 ## 2026-04-20
 
+### Added IDs File Management Command
+
+- **lib/cfc/commands/ids.rb**: New command module with four subcommands:
+  - `list` - Display IDs from file with player names and locations from database
+  - `add` - Add player ID to file with automatic name lookup or custom name
+  - `remove` - Remove player ID from file
+  - `validate` - Check all IDs in file exist in database
+- **lib/cfc.rb**: Added `ids` CLI command with subcommand support
+- **lib/cfc/diff.rb**: Updated `parse_ids_file` to support name annotations
+- **lib/cfc/commands/history.rb**: Updated `parse_ids_file` to support name annotations
+- **lib/cfc/commands/show.rb**: Updated `parse_ids_file` to support name annotations
+- IDs files now support human-readable format: `123456 John Doe` or `123456 # comment`
+- Names and comments are ignored during parsing for backward compatibility
+- **test/test_ids_command.rb**: 32 comprehensive tests covering all subcommands
+- **README.md**: Added documentation for IDs file management
+
+### Usage Examples:
+```bash
+cfc ids list data/cccg.ids
+cfc ids add data/cccg.ids 151181
+cfc ids add data/cccg.ids 151181 "Custom Name"
+cfc ids remove data/cccg.ids 151181
+cfc ids validate data/cccg.ids
+```
+
 ### Fixed Download Cron Silent Mode
 
 - **lib/cfc/downloader.rb**: Fixed cron mode to be truly silent
