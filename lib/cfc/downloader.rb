@@ -7,16 +7,17 @@ require "date"
 require "fileutils"
 
 module Cfc
-  # Configuration constants for downloader operations
-  URL = "https://storage.googleapis.com/cfc-public/data/tdlist.txt"
-  CACHE_DIR = File.expand_path("~/.cfc-cache")
-  HISTORY_DIR = File.expand_path("~/.cfc-history")
-  CACHE_FILE = File.join(CACHE_DIR, "tdlist.txt")
-  CACHE_ETAG_FILE = File.join(CACHE_DIR, ".etag")
-  CACHE_EXPIRY = 7 * 24 * 60 * 60 # 7 days in seconds
-  FIXTURES_DIR = File.expand_path("../../test/fixtures", __dir__)
+  module Downloader
+    # Configuration constants for downloader operations
+    URL = "https://storage.googleapis.com/cfc-public/data/tdlist.txt"
+    CACHE_DIR = File.expand_path("~/.cfc-cache")
+    HISTORY_DIR = File.expand_path("~/.cfc-history")
+    CACHE_FILE = File.join(CACHE_DIR, "tdlist.txt")
+    CACHE_ETAG_FILE = File.join(CACHE_DIR, ".etag")
+    CACHE_EXPIRY = 7 * 24 * 60 * 60 # 7 days in seconds
+    FIXTURES_DIR = File.expand_path("../../test/fixtures", __dir__)
 
-  def self.download_and_store(force: false, cron: false)
+    def self.download_and_store(force: false, cron: false)
     db = Database.new
     result = nil
 
@@ -51,7 +52,7 @@ module Cfc
       db.close if db
     end
 
-    puts "Loaded latest cached data" unless cron && result
+    $stderr.puts "Loaded latest cached data" unless cron && result
     result
   rescue StandardError
     false
@@ -255,5 +256,6 @@ module Cfc
     sanitized
   rescue StandardError
     data
+    end
   end
 end

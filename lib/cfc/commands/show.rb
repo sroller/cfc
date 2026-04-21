@@ -1,11 +1,14 @@
 # frozen_string_literal: true
 
+require "date"
 require_relative "../db"
+require_relative "../output_formatter"
+require_relative "../mailer"
 
 module Cfc
   module Commands
     class Show
-      def self.run(cfc_id, ids_file: nil, db_path: nil)
+      def self.run(cfc_id, ids_file: nil, db_path: nil, format: nil, mail: nil)
         # Parse IDs from file if provided
         ids = if ids_file
                 parse_ids_file(ids_file)
@@ -15,19 +18,47 @@ module Cfc
                 [Integer(cfc_id)]
               end
 
+        # Default to HTML format when mailing
+        format = "html" if mail && format.nil?
+
         db = Database.new(db_path)
 
         ids.each do |id|
-          display_player_info(db, id)
-          puts if ids.length > 1 # Add blank line between players
+          if format && format != "text"
+            player = db.get_player(id)
+            if player.nil?
+              $stderr.puts "Player not found: #{id}"
+            else
+              output = OutputFormatter.format(player, format, type: :show, date_range: Date.today.to_s)
+              puts output
+
+              if mail
+                name = "#{player["first_name"]} #{player["last_name"]}".strip
+                Mailer.send_mail(mail, "Player Information - #{name}", output)
+              end
+            end
+          else
+            display_player_info(db, id)
+
+            if mail
+              player = db.get_player(id)
+              if player
+                output = OutputFormatter.format(player, "html", type: :show, date_range: Date.today.to_s)
+                name = "#{player["first_name"]} #{player["last_name"]}".strip
+                Mailer.send_mail(mail, "Player Information - #{name}", output)
+              end
+            end
+          end
+          puts if ids.length > 1 && (!format || format == "text")
         end
 
         db.close
       rescue ArgumentError => e
-        puts "Invalid CFC ID: #{e.message}"
+        $stderr.puts "Invalid CFC ID: #{e.message}"
       end
 
       def self.parse_ids_file(filepath)
+        filepath = File.expand_path(filepath)
         return [] unless File.exist?(filepath)
 
         File.readlines(filepath).map(&:strip).reject(&:empty?).map(&:to_i)
@@ -38,7 +69,7 @@ module Cfc
         player = db.get_player(cfc_id)
 
         if player.nil?
-          puts "Player not found: #{cfc_id}"
+          $stderr.puts "Player not found: #{cfc_id}"
           return
         end
 

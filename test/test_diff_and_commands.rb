@@ -7,6 +7,7 @@ require "cfc/commands/history"
 require "cfc/commands/show"
 require "cfc/commands/find"
 require "cfc/commands/cleanup"
+require "cfc/mailer"
 require "stringio"
 require "tmpdir"
 
@@ -91,6 +92,22 @@ class TestDiff < Minitest::Test
     File.write(tmpfile, "100001\nabc\n100002\n")
     ids = Cfc::Diff.parse_ids_file(tmpfile)
     assert_equal([100001, 100002], ids)
+  end
+
+  def test_parse_ids_file_expands_tilde
+    # Create a file in home directory simulation
+    home = Dir.home
+    test_dir = File.join(home, ".cfc_test_tmp")
+    Dir.mkdir(test_dir) unless Dir.exist?(test_dir)
+    test_file = File.join(test_dir, "ids.txt")
+    File.write(test_file, "100001\n100002\n")
+
+    # Use tilde path
+    tilde_path = File.join("~", ".cfc_test_tmp", "ids.txt")
+    ids = Cfc::Diff.parse_ids_file(tilde_path)
+    assert_equal([100001, 100002], ids)
+  ensure
+    FileUtils.rm_rf(test_dir) if Dir.exist?(test_dir)
   end
 
   # --- get_players_by_date tests ---
@@ -570,6 +587,79 @@ class TestDiff < Minitest::Test
   def test_display_expire_info_with_50_years_minus
     # About 50 years from now (2026 + 50 = 2076)
     refute_equal("Membership: LIFE", Cfc::Diff.display_expire_info("2075-12-31"))
+  end
+
+  # --- cron tests ---
+  def test_diff_has_changes_with_new_players
+    output = "=== Rating Changes ===\n\nNew Players: 1\n"
+    assert(Cfc::Diff.diff_has_changes?(output))
+  end
+
+  def test_diff_has_changes_with_retired_players
+    output = "=== Rating Changes ===\n\nRetired Players: 1\n"
+    assert(Cfc::Diff.diff_has_changes?(output))
+  end
+
+  def test_diff_has_changes_with_changed_players
+    output = "=== Rating Changes ===\n\nChanged Players: 1\n"
+    assert(Cfc::Diff.diff_has_changes?(output))
+  end
+
+  def test_diff_has_changes_with_no_changes
+    output = "=== Rating Changes ===\n\nSummary:\n  New: 0\n  Changed: 0\n"
+    refute(Cfc::Diff.diff_has_changes?(output))
+  end
+
+  def test_diff_has_changes_with_empty_output
+    refute(Cfc::Diff.diff_has_changes?(""))
+  end
+
+  def test_run_cron_detects_change
+    # With existing data that has changes, cron should detect and return
+    output = capture_io do
+      Cfc::Diff.run_cron(ids_file: nil, db_path: @db_path, check_interval: 0.1)
+    end
+
+    refute_nil(output)
+    assert_match(/Update detected/, output)
+  end
+
+  def test_run_cron_with_mail_sends_email
+    emails_sent = []
+
+    # Mock Mailer to track email sends
+    original_send = Cfc::Mailer.method(:send_mail)
+    Cfc::Mailer.define_singleton_method(:send_mail) do |recipients, subject, body, from: nil|
+      emails_sent << { recipients: recipients, subject: subject, body: body }
+    end
+
+    output = capture_io do
+      Cfc::Diff.run_cron(ids_file: nil, db_path: @db_path, check_interval: 0.1, mail: "test@example.com")
+    end
+
+    assert_equal(1, emails_sent.length)
+    assert_match(/Rating Changes Detected/, emails_sent[0][:subject])
+    assert_includes(emails_sent[0][:recipients], "test@example.com")
+    assert_match(/<!DOCTYPE html>/, emails_sent[0][:body])
+  ensure
+    Cfc::Mailer.define_singleton_method(:send_mail, original_send)
+  end
+
+  # --- normalize_date tests ---
+  def test_normalize_date_yyyymmdd_format
+    assert_equal("2026-01-01", Cfc::Diff.normalize_date("20260101"))
+  end
+
+  def test_normalize_date_already_formatted
+    assert_equal("2026-01-01", Cfc::Diff.normalize_date("2026-01-01"))
+  end
+
+  def test_normalize_date_invalid_format
+    assert_equal("invalid", Cfc::Diff.normalize_date("invalid"))
+  end
+
+  def test_normalize_date_short_string
+    assert_equal("2026", Cfc::Diff.normalize_date("2026"))
   end
 
 end

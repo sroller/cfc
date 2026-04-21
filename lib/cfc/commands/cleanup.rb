@@ -8,7 +8,7 @@ module Cfc
       def self.run(db_path: nil)
         db = Database.new(db_path)
 
-        puts "Analyzing rating entries for duplicates..."
+        $stderr.puts "Analyzing rating entries for duplicates..."
 
         # Get all rating entries ordered by cfc_id and rating_date (oldest first)
         entries = db.db.execute(<<-SQL)
@@ -17,7 +17,7 @@ module Cfc
           ORDER BY cfc_id, rating_date ASC, id ASC
         SQL
 
-        puts "Total entries: #{entries.length}"
+        $stderr.puts "Total entries: #{entries.length}"
 
         duplicates = []
         last_key = nil
@@ -40,13 +40,13 @@ module Cfc
         end
 
         if duplicates.empty?
-          puts "No duplicates found. Database is clean!"
+          $stderr.puts "No duplicates found. Database is clean!"
           db.close
           return
         end
 
-        puts "Found #{duplicates.length} duplicate entries to remove"
-        puts "Keeping #{entries.length - duplicates.length} unique entries"
+        $stderr.puts "Found #{duplicates.length} duplicate entries to remove"
+        $stderr.puts "Keeping #{entries.length - duplicates.length} unique entries"
 
         # Delete duplicates in batches (SQLite has parameter limit)
         batch_size = 900
@@ -58,11 +58,11 @@ module Cfc
             DELETE FROM player_ratings WHERE id IN (#{placeholders})
           SQL
           deleted_count += batch.length
-          puts "Progress: #{deleted_count}/#{duplicates.length} deleted..."
+          $stderr.puts "Progress: #{deleted_count}/#{duplicates.length} deleted..."
         end
 
-        puts "Cleanup complete!"
-        puts "Removed #{deleted_count} duplicate entries"
+        $stderr.puts "Cleanup complete!"
+        $stderr.puts "Removed #{deleted_count} duplicate entries"
 
         db.close
       end

@@ -19,10 +19,13 @@ class Minitest::Test
   def capture_io
     require "stringio"
     old_stdout = $stdout
+    old_stderr = $stderr
     $stdout = StringIO.new
+    $stderr = StringIO.new
     yield
-    $stdout.string
+    "#{$stdout.string}#{$stderr.string}"
   ensure
     $stdout = old_stdout
+    $stderr = old_stderr
   end
 end

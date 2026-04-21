@@ -31,6 +31,7 @@ Gem::Specification.new do |spec|
   spec.require_paths = ["lib"]
 
   spec.add_dependency "csv", "~> 1.0"
+  spec.add_dependency "mail", "~> 2.8"
   spec.add_dependency "sqlite3", "~> 2.0"
   spec.add_dependency "thor", "~> 1.0"
 

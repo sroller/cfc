@@ -5,17 +5,31 @@ require "stringio"
 require "fileutils"
 require "date"
 require_relative "commands/show"
+require_relative "output_formatter"
+require_relative "mailer"
 
 module Cfc
   class Diff
-    def self.run(from: nil, to: nil, ids: nil, ids_file: nil, show_spinner: true, db_path: nil)
-      spinner = Thread.new { run_spinner } if show_spinner
+    def self.run(from: nil, to: nil, ids: nil, ids_file: nil, show_spinner: true, db_path: nil, cron: false, format: nil, mail: nil)
+      if cron
+        run_cron(ids_file: ids_file, db_path: db_path, mail: mail)
+        return
+      end
+
+      # Default to HTML format when mailing
+      format = "html" if mail && format.nil?
+
+      spinner = Thread.new { run_spinner } if show_spinner && $stdout.tty?
 
       # Get ratings from database for from and to dates
       db = Database.new(db_path)
 
       # Get default dates if not provided (latest two available snapshots)
       from, to = get_default_dates(db) if from.nil? || to.nil?
+
+      # Normalize date format from YYYYMMDD to YYYY-MM-DD if needed
+      from = normalize_date(from) if from
+      to = normalize_date(to) if to
 
       # Parse IDs filter if provided
       id_filter = parse_ids(ids) if ids
@@ -30,7 +44,7 @@ module Cfc
       print "\r\e[K" if spinner # Clear the spinner line only if spinner was running
 
       if from_players.empty? || to_players.empty?
-        puts "Could not find data for #{from} and #{to}"
+        $stderr.puts "Could not find data for #{from} and #{to}"
         return
       end
 
@@ -44,7 +58,83 @@ module Cfc
       changes = compare_players(from_players, to_players)
 
       # Print results
-      print_changes(changes)
+      if format && format != "text"
+        date_range = "#{from} to #{to}"
+        output = OutputFormatter.format(changes, format, type: :diff, date_range: date_range)
+        puts output
+
+        if mail
+          Mailer.send_mail(mail, "Rating Changes (#{date_range})", output)
+        end
+      else
+        print_changes(changes)
+
+        if mail
+          output = OutputFormatter.format(changes, "html", type: :diff, date_range: "#{from} to #{to}")
+          Mailer.send_mail(mail, "Rating Changes (#{from} to #{to})", output)
+        end
+      end
+    end
+
+    def self.run_cron(ids_file: nil, db_path: nil, check_interval: 1103, mail: nil)
+      loop do
+        db = Database.new(db_path)
+        from, to = get_default_dates(db)
+        db.close
+
+        output = capture_diff_output(from: from, to: to, ids_file: ids_file, db_path: db_path)
+
+        if diff_has_changes?(output)
+          puts output
+
+          if mail
+            # Generate HTML output for email
+            html_output = capture_diff_output_html(from: from, to: to, ids_file: ids_file, db_path: db_path)
+            date_range = "#{from} to #{to}"
+            Mailer.send_mail(mail, "Rating Changes Detected (#{date_range})", html_output)
+          end
+
+          $stderr.puts "Update detected at #{Time.now.strftime("%Y-%m-%d %H:%M:%S")}"
+          return
+        end
+
+        $stderr.puts "[#{Time.now.strftime("%Y-%m-%d %H:%M:%S")}] No update yet, checking again in 1 hour..."
+        sleep(check_interval)
+      end
+    end
+
+    def self.capture_diff_output_html(from:, to:, ids_file: nil, db_path: nil)
+      io = StringIO.new
+      original_stdout = $stdout
+      $stdout = io
+
+      begin
+        run(from: from, to: to, ids_file: ids_file, show_spinner: false, db_path: db_path, format: "html")
+      ensure
+        $stdout = original_stdout
+      end
+
+      io.string
+    end
+
+    def self.capture_diff_output(from:, to:, ids_file: nil, db_path: nil)
+      io = StringIO.new
+      original_stdout = $stdout
+      $stdout = io
+
+      begin
+        run(from: from, to: to, ids_file: ids_file, show_spinner: false, db_path: db_path)
+      ensure
+        $stdout = original_stdout
+      end
+
+      io.string
+    end
+
+    def self.diff_has_changes?(output)
+      output.include?("New Players:") ||
+        output.include?("Retired Players:") ||
+        output.include?("Changed Players:")
     end
 
     def self.run_spinner
@@ -57,11 +147,22 @@ module Cfc
       end
     end
 
+    def self.normalize_date(date_str)
+      return date_str if date_str.include?("-") # Already in YYYY-MM-DD format
+      return date_str unless date_str.length == 8
+
+      # Convert YYYYMMDD to YYYY-MM-DD
+      "#{date_str[0..3]}-#{date_str[4..5]}-#{date_str[6..7]}"
+    rescue StandardError
+      date_str
+    end
+
     def self.parse_ids(ids_string)
       ids_string.split(",").map(&:strip).map(&:to_i)
     end
 
     def self.parse_ids_file(filepath)
+      filepath = File.expand_path(filepath)
       return nil unless File.exist?(filepath)
 
       File.readlines(filepath).map(&:strip).reject(&:empty?).map(&:to_i).reject(&:zero?)
@@ -91,7 +192,7 @@ module Cfc
       SQL
 
       if dates.length < 2
-        puts "Not enough rating snapshots available (need at least 2, found #{dates.length})"
+        $stderr.puts "Not enough rating snapshots available (need at least 2, found #{dates.length})"
         exit(1)
       end
 

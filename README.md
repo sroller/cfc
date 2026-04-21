@@ -13,6 +13,9 @@ A Ruby gem to manage player data from Chess Canada (CFC).
 - **Cleanup command** - remove duplicate rating entries
 - **Local caching** - ETag-based caching to avoid unnecessary downloads
 - **Archive history** - all downloads saved to `~/.cfc-history/` for data recovery
+- **Multiple output formats** - text (default), HTML, and CSV
+- **Email output** - send results as MIME emails with HTML and plain text parts
+- **Expired membership highlighting** - expired dates shown in red in HTML output
 
 ## Installation
 
@@ -76,10 +79,51 @@ The diff command shows:
   - Only ratings that actually changed
 
 Options:
-- `--from DATE` - Starting date (YYYYMMDD)
-- `--to DATE` - Ending date (YYYYMMDD)
+- `--from DATE` - Starting date (YYYY-MM-DD or YYYYMMDD)
+- `--to DATE` - Ending date (YYYY-MM-DD or YYYYMMDD)
 - `--ids ID1,ID2,...` - Filter to specific CFC IDs
-- `--ids-file FILE` - Read CFC IDs from file
+- `--ids-file FILE` - Read CFC IDs from file (one per line)
+- `--format FORMAT` - Output format: text (default), html, csv
+- `--mail EMAILS` - Comma-separated list of emails to send output to (defaults to HTML)
+- `--cron` - Cron mode - poll every hour starting at 12:00 Thursday until update detected. Use with `--mail` to email results when update is found
+
+### Output Formats
+
+All commands support multiple output formats:
+
+```bash
+# Text output (default)
+cfc diff --from 20260101 --to 20260404
+
+# HTML output
+cfc diff --from 20260101 --to 20260404 --format=html > changes.html
+
+# CSV output
+cfc diff --from 20260101 --to 20260404 --format=csv > changes.csv
+
+# Email output (sends HTML by default)
+cfc diff --from 20260101 --to 20260404 --mail=user@example.com
+cfc history 123456 --mail=admin@example.com,coach@example.com
+cfc show 123456 --mail=player@example.com --format=html
+cfc find --last_name Smith --mail=club@example.org
+```
+
+### Email Configuration
+
+Emails are sent via SMTP. Configure via environment variables:
+
+- `CFC_MAIL_FROM` - Sender address (default: `cfc@localhost`)
+- `CFC_SMTP_SERVER` - SMTP server (default: `localhost`)
+- `CFC_SMTP_PORT` - SMTP port (default: `25`)
+
+### Cron Mode with Email
+
+Run the diff command in cron mode to automatically detect Thursday rating updates:
+
+```bash
+# Poll starting at 12:00 Thursday, email results when update detected
+cfc diff --cron --ids-file=data/cccg.ids --mail=steffen.roller@gmail.com
+```
 
 ### Example Output
 
@@ -120,6 +164,12 @@ cfc find --city Toronto
 
 # Combine filters
 cfc find --last-name Roller --province ON
+
+# HTML output
+cfc find --last-name Smith --format=html > results.html
+
+# Email results
+cfc find --last-name Smith --mail=club@example.org
 ```
 
 ### Show Player Details
@@ -128,6 +178,12 @@ Display detailed information for a specific player:
 
 ```bash
 cfc show 151181
+
+# HTML output with expired membership shown in red
+cfc show 151181 --format=html
+
+# Email player info
+cfc show 151181 --mail=player@example.com
 ```
 
 ### Show Rating History
@@ -140,6 +196,12 @@ cfc history 151181
 
 # Date range
 cfc history 151181 --from 2024-01-01 --to 2024-12-31
+
+# HTML output
+cfc history 151181 --format=html > history.html
+
+# Email history
+cfc history 151181 --mail=coach@example.com
 ```
 
 ### Cleanup Duplicate Ratings
