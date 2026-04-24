@@ -2,18 +2,19 @@
 
 require_relative "../db"
 require_relative "../helpers"
+require_relative "../player_resolver"
 
 module Cfc
   module Commands
     class History
       def self.run(cfc_id, from: nil, to: nil, ids_file: nil, db_path: nil, format: nil, mail: nil)
+        db = Database.new(db_path)
+
         ids = if ids_file
                 Helpers.parse_ids_file(ids_file)
               else
-                [Integer(cfc_id)]
+                PlayerResolver.resolve(cfc_id, db: db)
               end
-
-        db = Database.new(db_path)
 
         from_date = Helpers.normalize_date(from) if from
         to_date = Helpers.normalize_date(to) if to

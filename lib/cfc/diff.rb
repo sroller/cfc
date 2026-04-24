@@ -3,6 +3,7 @@
 require "csv"
 require "date"
 require_relative "helpers"
+require_relative "player_resolver"
 
 module Cfc
   class Diff
@@ -19,7 +20,7 @@ module Cfc
         to ||= default_to
       end
 
-      id_filter = Helpers.parse_ids(ids) if ids
+      id_filter = resolve_ids(ids, db: db) if ids
       id_filter = Helpers.parse_ids_file(ids_file) if ids_file
 
       from_players = get_players_by_date(db, from)
@@ -45,6 +46,17 @@ module Cfc
       Helpers.output_result(changes, format: format, mail: mail, type: :diff,
                                      subject: "Rating Changes (#{date_range})", date_range: date_range) do
         print_changes(changes)
+      end
+    end
+
+    def self.resolve_ids(ids_string, db:)
+      ids_string.split(",").flat_map do |term|
+        term = term.strip
+        if PlayerResolver.numeric?(term)
+          [term.to_i]
+        else
+          PlayerResolver.resolve(term, db: db, multi: true)
+        end
       end
     end
 

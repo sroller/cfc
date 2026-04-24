@@ -707,11 +707,9 @@ class TestCommandsHistory < Minitest::Test
   end
 
   def test_run_with_invalid_cfc_id_string
-    output = capture_io do
+    assert_raises(SystemExit) do
       Cfc::Commands::History.run("abc", db_path: @db_path)
     end
-
-    assert_match(/Invalid CFC ID/, output)
   end
 
   def test_display_player_history_nil_player

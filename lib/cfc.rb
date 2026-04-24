@@ -5,6 +5,7 @@ require_relative "cfc/db"
 require_relative "cfc/downloader"
 require_relative "cfc/diff"
 require_relative "cfc/helpers"
+require_relative "cfc/player_resolver"
 require_relative "cfc/output_formatter"
 require "thor"
 
@@ -36,30 +37,30 @@ module Cfc
                format: options[:format], mail: options[:mail])
     end
 
-    desc "history CFC_ID", "Show rating history for a player"
+    desc "history PLAYER", "Show rating history for a player (CFC ID or name)"
     option :from, desc: "Start date (YYYY-MM-DD or YYYYMMDD)", type: :string
     option :to, desc: "End date (YYYY-MM-DD or YYYYMMDD)", type: :string
     option :ids_file, desc: "File containing CFC IDs (one per line)", type: :string
     option :format, desc: "Output format: text (default), html, csv", type: :string, default: "text"
     option :mail, desc: "Comma-separated list of email addresses to send output to", type: :string
-    def history(cfc_id = nil)
+    def history(player = nil)
       require_relative "cfc/commands/history"
-      require_id_or_file!(cfc_id, "history")
+      require_id_or_file!(player, "history")
       validate_dates!(:from, :to)
       validate_format!
-      Commands::History.run(cfc_id, from: options[:from], to: options[:to], ids_file: options[:ids_file],
+      Commands::History.run(player, from: options[:from], to: options[:to], ids_file: options[:ids_file],
                                     format: options[:format], mail: options[:mail])
     end
 
-    desc "show CFC_ID", "Display player information"
+    desc "show PLAYER", "Display player information (CFC ID or name)"
     option :ids_file, desc: "File containing CFC IDs (one per line)", type: :string
     option :format, desc: "Output format: text (default), html, csv", type: :string, default: "text"
     option :mail, desc: "Comma-separated list of email addresses to send output to", type: :string
-    def show(cfc_id = nil)
+    def show(player = nil)
       require_relative "cfc/commands/show"
-      require_id_or_file!(cfc_id, "show")
+      require_id_or_file!(player, "show")
       validate_format!
-      Commands::Show.run(cfc_id, ids_file: options[:ids_file], format: options[:format], mail: options[:mail])
+      Commands::Show.run(player, ids_file: options[:ids_file], format: options[:format], mail: options[:mail])
     end
 
     desc "find", "Search for players by name, province, or city"
@@ -98,8 +99,8 @@ module Cfc
       unless subcommand && filepath
         abort "Error: Subcommand and filepath are required\n" \
               "Usage: cfc ids list FILEPATH\n" \
-              "       cfc ids add FILEPATH CFC_ID [--name NAME]\n" \
-              "       cfc ids remove FILEPATH CFC_ID\n" \
+              "       cfc ids add FILEPATH CFC_ID_OR_NAME [--name NAME]\n" \
+              "       cfc ids remove FILEPATH CFC_ID_OR_NAME\n" \
               "       cfc ids validate FILEPATH"
       end
 
@@ -107,11 +108,19 @@ module Cfc
       when "list"
         Commands::Ids.list(filepath)
       when "add"
-        abort "Error: CFC ID is required for add subcommand" unless args.first
-        Commands::Ids.add(filepath, args.first, options[:name])
+        abort "Error: CFC ID or player name is required for add subcommand" unless args.first
+        identifier = args.join(" ")
+        db = Database.new
+        resolved = PlayerResolver.resolve(identifier, db: db)
+        db.close
+        resolved.each { |id| Commands::Ids.add(filepath, id.to_s, options[:name]) }
       when "remove"
-        abort "Error: CFC ID is required for remove subcommand" unless args.first
-        Commands::Ids.remove(filepath, args.first)
+        abort "Error: CFC ID or player name is required for remove subcommand" unless args.first
+        identifier = args.join(" ")
+        db = Database.new
+        resolved = PlayerResolver.resolve(identifier, db: db)
+        db.close
+        resolved.each { |id| Commands::Ids.remove(filepath, id.to_s) }
       when "validate"
         Commands::Ids.validate(filepath)
       else
@@ -153,11 +162,12 @@ module Cfc
       abort "Error: Cannot use both --#{provided[0]} and --#{provided[1]} options"
     end
 
-    def require_id_or_file!(cfc_id, command)
-      return if cfc_id || options[:ids_file]
+    def require_id_or_file!(identifier, command)
+      return if identifier || options[:ids_file]
 
-      abort "Error: Either CFC_ID or --ids-file must be provided\n" \
+      abort "Error: Either a player (CFC ID or name) or --ids-file must be provided\n" \
             "Usage: cfc #{command} CFC_ID\n" \
+            "       cfc #{command} \"Player Name\"\n" \
             "       cfc #{command} --ids-file /path/to/ids.txt"
     end
   end

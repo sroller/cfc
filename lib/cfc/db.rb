@@ -58,6 +58,9 @@ module Cfc
 
       @db.execute("CREATE INDEX IF NOT EXISTS idx_cfc_id ON player_ratings(cfc_id)")
       @db.execute("CREATE INDEX IF NOT EXISTS idx_rating_date ON player_ratings(rating_date)")
+      @db.execute("CREATE INDEX IF NOT EXISTS idx_players_last_name ON players(last_name COLLATE NOCASE)")
+      @db.execute("CREATE INDEX IF NOT EXISTS idx_players_first_name ON players(first_name COLLATE NOCASE)")
+      @db.execute("CREATE INDEX IF NOT EXISTS idx_players_name ON players(last_name COLLATE NOCASE, first_name COLLATE NOCASE)")
     end
 
     def clear_data
@@ -223,6 +226,40 @@ module Cfc
       sql += " ORDER BY p.last_name, p.first_name"
 
       @db.execute(sql, params)
+    end
+
+    def search_by_name(query)
+      terms = query.strip.split(/\s+/)
+      return [] if terms.empty?
+
+      if terms.length == 1
+        term = terms.first
+        @db.execute(<<-SQL, ["%#{term}%", "%#{term}%"])
+          SELECT p.cfc_id, p.last_name, p.first_name, p.province, p.city, p.expire_date,
+                 r.rating, r.active_rating, r.rating_date
+          FROM players p
+          LEFT JOIN player_ratings r ON p.cfc_id = r.cfc_id
+          WHERE r.id = (SELECT MAX(id) FROM player_ratings WHERE cfc_id = p.cfc_id)
+            AND (p.last_name LIKE ? COLLATE NOCASE OR p.first_name LIKE ? COLLATE NOCASE)
+          ORDER BY p.last_name COLLATE NOCASE, p.first_name COLLATE NOCASE
+          LIMIT 50
+        SQL
+      else
+        # Try both "first last" and "last first" orderings
+        first = terms[0]
+        last = terms[1..].join(" ")
+        @db.execute(<<-SQL, ["%#{first}%", "%#{last}%", "%#{last}%", "%#{first}%"])
+          SELECT p.cfc_id, p.last_name, p.first_name, p.province, p.city, p.expire_date,
+                 r.rating, r.active_rating, r.rating_date
+          FROM players p
+          LEFT JOIN player_ratings r ON p.cfc_id = r.cfc_id
+          WHERE r.id = (SELECT MAX(id) FROM player_ratings WHERE cfc_id = p.cfc_id)
+            AND ((p.first_name LIKE ? COLLATE NOCASE AND p.last_name LIKE ? COLLATE NOCASE)
+              OR (p.first_name LIKE ? COLLATE NOCASE AND p.last_name LIKE ? COLLATE NOCASE))
+          ORDER BY p.last_name COLLATE NOCASE, p.first_name COLLATE NOCASE
+          LIMIT 50
+        SQL
+      end
     end
 
     def close

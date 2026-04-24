@@ -3,20 +3,21 @@
 require "date"
 require_relative "../db"
 require_relative "../helpers"
+require_relative "../player_resolver"
 
 module Cfc
   module Commands
     class Show
       def self.run(cfc_id, ids_file: nil, db_path: nil, format: nil, mail: nil)
+        db = Database.new(db_path)
+
         ids = if ids_file
                 Helpers.parse_ids_file(ids_file)
               elsif cfc_id.is_a?(Array)
                 cfc_id.map(&:to_i)
               else
-                [Integer(cfc_id)]
+                PlayerResolver.resolve(cfc_id, db: db)
               end
-
-        db = Database.new(db_path)
 
         ids.each do |id|
           player = db.get_player(id)

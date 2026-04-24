@@ -1,5 +1,23 @@
 ## [Unreleased]
 
+## [0.4.0] - 2026-04-23
+
+### Added
+
+- All commands now accept player names in addition to CFC IDs (e.g., `cfc show "Laksshana Deepak"`)
+- New `PlayerResolver` module for resolving player names to CFC IDs
+- Interactive player selection with `tty-prompt` when multiple names match
+- Non-interactive fallback: lists matching players and exits when stdin is not a TTY
+- `search_by_name` database method with case-insensitive matching (single-term and multi-term queries)
+- Case-insensitive indexes on `last_name`, `first_name`, and composite `(last_name, first_name)` for fast lookups
+- `tty-prompt` (~> 0.23) dependency for interactive terminal prompts
+
+### Changed
+
+- `show`, `history`, `diff --ids`, `ids add`, and `ids remove` commands accept player names
+- Player selection lists displayed in "LastName, FirstName" format, sorted alphabetically
+- CLI help text updated to reflect name support (e.g., `cfc show PLAYER`, `cfc history PLAYER`)
+
 ## [0.3.6] - 2026-04-23
 
 ### Fixed
