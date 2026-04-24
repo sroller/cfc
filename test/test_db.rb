@@ -175,7 +175,7 @@ class TestDbRatingChanged < Minitest::Test
   def test_rating_changed_with_nil_values
     @db.db.execute(<<-SQL)
       INSERT INTO player_ratings (cfc_id, rating, active_rating, rating_date, download_date) VALUES
-      (1, nil, nil, '2024-01-01', '2024-01-01')
+      (1, NULL, NULL, '2024-01-01', '2024-01-01')
     SQL
 
     assert(@db.rating_changed?(1, { rating: 1000, active_rating: 1000 }))
@@ -255,8 +255,7 @@ class TestDbGetRatingHistory < Minitest::Test
   end
 
   def test_get_rating_history_empty
-    refute(@db.get_rating_history(999_999))
-    assert_equal(0, @db.get_rating_history(999_999).length)
+    assert_empty(@db.get_rating_history(999_999))
   end
 
   def test_get_rating_history_ordered_by_date_desc
@@ -404,12 +403,12 @@ class TestDbGetPlayerHistory < Minitest::Test
 
   def test_get_player_history_with_to_date
     results = @db.get_player_history(100_001, to_date: "2024-02-01")
-    assert_equal(1, results.length) # Only February
+    assert_equal(2, results.length) # Jan and Feb
   end
 
   def test_get_player_history_with_both_dates
     results = @db.get_player_history(100_001, from_date: "2024-01-15", to_date: "2024-02-28")
-    assert_equal(2, results.length)
+    assert_equal(1, results.length) # Only Feb
   end
 
   def test_get_player_history_empty_no_history
@@ -496,8 +495,8 @@ class TestDbFindPlayers < Minitest::Test
   end
 
   def test_find_players_multiple_matching_provinces
-    results = @db.find_players(province: "%N") # Matches ON and MB
-    assert_equal(2, results.length)
+    results = @db.find_players(province: "B") # Matches AB, BC, MB
+    assert_equal(3, results.length)
   end
 
   def test_find_players_no_matches
@@ -506,11 +505,16 @@ class TestDbFindPlayers < Minitest::Test
   end
 
   def test_find_players_ordered_by_name
-    # Sort by creating 5 players and verify ordering
+    # Insert players that also have ratings (required by LEFT JOIN with MAX(id) filter)
     @db.db.execute(<<-SQL)
       INSERT INTO players (cfc_id, last_name, first_name, province, city) VALUES
       (100_005, 'Zoe', 'Zooey', 'ON', 'Toronto'),
       (100_006, 'Anna', 'Ann', 'BC', 'Vancouver')
+    SQL
+    @db.db.execute(<<-SQL)
+      INSERT INTO player_ratings (cfc_id, rating, active_rating, rating_date, download_date) VALUES
+      (100_005, 1900, 1900, '2024-01-01', '2024-01-01'),
+      (100_006, 2000, 2000, '2024-01-01', '2024-01-01')
     SQL
 
     results = @db.find_players(last_name: nil)
@@ -596,7 +600,9 @@ class TestDbInit < Minitest::Test
 
   def test_init_with_default_db_path
     # Test that default DB path is used when no path provided
-    assert_nil(Cfc::Database.new.instance_variable_get(:@db_path))
+    skip "requires /var/lib/chess to exist" unless File.directory?("/var/lib/chess")
+    db = Cfc::Database.new
+    assert_equal("/var/lib/chess/cfc_ratings.db", db.instance_variable_get(:@db_path))
   end
 
   def test_init_with_absolute_path

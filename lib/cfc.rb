@@ -4,6 +4,7 @@ require_relative "cfc/version"
 require_relative "cfc/db"
 require_relative "cfc/downloader"
 require_relative "cfc/diff"
+require_relative "cfc/helpers"
 require_relative "cfc/output_formatter"
 require "thor"
 
@@ -28,23 +29,11 @@ module Cfc
     option :format, desc: "Output format: text (default), html, csv", type: :string, default: "text"
     option :mail, desc: "Comma-separated list of email addresses to send output to", type: :string
     def diff
-      if options[:ids] && options[:ids_file]
-        $stderr.puts "Error: Cannot use both --ids and --ids_file options"
-        exit(1)
-      end
-      if options[:from] && !CLI.valid_date_format?(options[:from])
-        $stderr.puts "Error: Invalid date format for --from. Use YYYY-MM-DD or YYYYMMDD (e.g., 2026-01-01 or 20260101)"
-        exit(1)
-      end
-      if options[:to] && !CLI.valid_date_format?(options[:to])
-        $stderr.puts "Error: Invalid date format for --to. Use YYYY-MM-DD or YYYYMMDD (e.g., 2026-01-01 or 20260101)"
-        exit(1)
-      end
-      unless %w[text html csv].include?(options[:format])
-        $stderr.puts "Error: Invalid format '#{options[:format]}'. Use text, html, or csv"
-        exit(1)
-      end
-      Diff.run(from: options[:from], to: options[:to], ids: options[:ids], ids_file: options[:ids_file], format: options[:format], mail: options[:mail])
+      validate_mutually_exclusive!(:ids, :ids_file)
+      validate_dates!(:from, :to)
+      validate_format!
+      Diff.run(from: options[:from], to: options[:to], ids: options[:ids], ids_file: options[:ids_file],
+               format: options[:format], mail: options[:mail])
     end
 
     desc "history CFC_ID", "Show rating history for a player"
@@ -55,25 +44,11 @@ module Cfc
     option :mail, desc: "Comma-separated list of email addresses to send output to", type: :string
     def history(cfc_id = nil)
       require_relative "cfc/commands/history"
-      if cfc_id.nil? && options[:ids_file].nil?
-        $stderr.puts "Error: Either CFC_ID or --ids-file must be provided"
-        $stderr.puts "Usage: cfc history CFC_ID"
-        $stderr.puts "       cfc history --ids-file /path/to/ids.txt"
-        exit(1)
-      end
-      if options[:from] && !CLI.valid_date_format?(options[:from])
-        $stderr.puts "Error: Invalid date format for --from. Use YYYY-MM-DD or YYYYMMDD (e.g., 2026-01-01 or 20260101)"
-        exit(1)
-      end
-      if options[:to] && !CLI.valid_date_format?(options[:to])
-        $stderr.puts "Error: Invalid date format for --to. Use YYYY-MM-DD or YYYYMMDD (e.g., 2026-01-01 or 20260101)"
-        exit(1)
-      end
-      unless %w[text html csv].include?(options[:format])
-        $stderr.puts "Error: Invalid format '#{options[:format]}'. Use text, html, or csv"
-        exit(1)
-      end
-      Commands::History.run(cfc_id, from: options[:from], to: options[:to], ids_file: options[:ids_file], format: options[:format], mail: options[:mail])
+      require_id_or_file!(cfc_id, "history")
+      validate_dates!(:from, :to)
+      validate_format!
+      Commands::History.run(cfc_id, from: options[:from], to: options[:to], ids_file: options[:ids_file],
+                                    format: options[:format], mail: options[:mail])
     end
 
     desc "show CFC_ID", "Display player information"
@@ -82,16 +57,8 @@ module Cfc
     option :mail, desc: "Comma-separated list of email addresses to send output to", type: :string
     def show(cfc_id = nil)
       require_relative "cfc/commands/show"
-      if cfc_id.nil? && options[:ids_file].nil?
-        $stderr.puts "Error: Either CFC_ID or --ids-file must be provided"
-        $stderr.puts "Usage: cfc show CFC_ID"
-        $stderr.puts "       cfc show --ids-file /path/to/ids.txt"
-        exit(1)
-      end
-      unless %w[text html csv].include?(options[:format])
-        $stderr.puts "Error: Invalid format '#{options[:format]}'. Use text, html, or csv"
-        exit(1)
-      end
+      require_id_or_file!(cfc_id, "show")
+      validate_format!
       Commands::Show.run(cfc_id, ids_file: options[:ids_file], format: options[:format], mail: options[:mail])
     end
 
@@ -103,20 +70,14 @@ module Cfc
     option :format, desc: "Output format: text (default), html, csv", type: :string, default: "text"
     option :mail, desc: "Comma-separated list of email addresses to send output to", type: :string
     def find
-      if options[:last_name].nil? && options[:first_name].nil? &&
-         options[:province].nil? && options[:city].nil?
-        $stderr.puts "Error: At least one search criterion must be provided"
-        $stderr.puts "Usage: cfc find --last_name Smith"
-        $stderr.puts "       cfc find --first_name John"
-        $stderr.puts "       cfc find --province ON"
-        $stderr.puts "       cfc find --city Toronto"
-        $stderr.puts "       cfc find --last_name Smith --province ON --city Toronto"
-        exit(1)
+      if %i[last_name first_name province city].all? { |k| options[k].nil? }
+        abort "Error: At least one search criterion must be provided\n" \
+              "Usage: cfc find --last_name Smith\n" \
+              "       cfc find --first_name John\n" \
+              "       cfc find --province ON\n" \
+              "       cfc find --city Toronto"
       end
-      unless %w[text html csv].include?(options[:format])
-        $stderr.puts "Error: Invalid format '#{options[:format]}'. Use text, html, or csv"
-        exit(1)
-      end
+      validate_format!
       require_relative "cfc/commands/find"
       Commands::Find.run(
         last_name: options[:last_name],
@@ -135,37 +96,26 @@ module Cfc
       require "fileutils"
 
       unless subcommand && filepath
-        $stderr.puts "Error: Subcommand and filepath are required"
-        $stderr.puts "Usage: cfc ids list FILEPATH"
-        $stderr.puts "       cfc ids add FILEPATH CFC_ID [--name NAME]"
-        $stderr.puts "       cfc ids remove FILEPATH CFC_ID"
-        $stderr.puts "       cfc ids validate FILEPATH"
-        exit(1)
+        abort "Error: Subcommand and filepath are required\n" \
+              "Usage: cfc ids list FILEPATH\n" \
+              "       cfc ids add FILEPATH CFC_ID [--name NAME]\n" \
+              "       cfc ids remove FILEPATH CFC_ID\n" \
+              "       cfc ids validate FILEPATH"
       end
 
       case subcommand
       when "list"
         Commands::Ids.list(filepath)
       when "add"
-        cfc_id = args.first
-        unless cfc_id
-          $stderr.puts "Error: CFC ID is required for add subcommand"
-          exit(1)
-        end
-        Commands::Ids.add(filepath, cfc_id, options[:name])
+        abort "Error: CFC ID is required for add subcommand" unless args.first
+        Commands::Ids.add(filepath, args.first, options[:name])
       when "remove"
-        cfc_id = args.first
-        unless cfc_id
-          $stderr.puts "Error: CFC ID is required for remove subcommand"
-          exit(1)
-        end
-        Commands::Ids.remove(filepath, cfc_id)
+        abort "Error: CFC ID is required for remove subcommand" unless args.first
+        Commands::Ids.remove(filepath, args.first)
       when "validate"
         Commands::Ids.validate(filepath)
       else
-        $stderr.puts "Error: Unknown subcommand '#{subcommand}'"
-        $stderr.puts "Available subcommands: list, add, remove, validate"
-        exit(1)
+        abort "Error: Unknown subcommand '#{subcommand}'\nAvailable subcommands: list, add, remove, validate"
       end
     end
 
@@ -179,14 +129,36 @@ module Cfc
       true
     end
 
-    def self.valid_date_format?(date_str)
-      return false if date_str.nil? || date_str.empty?
+    private
 
-      # Accept YYYY-MM-DD or YYYYMMDD
-      return true if date_str =~ /^\d{4}-\d{2}-\d{2}$/
-      return true if date_str =~ /^\d{8}$/
+    def validate_format!
+      return if %w[text html csv].include?(options[:format])
 
-      false
+      abort "Error: Invalid format '#{options[:format]}'. Use text, html, or csv"
+    end
+
+    def validate_dates!(*keys)
+      keys.each do |key|
+        next unless options[key]
+        next if Helpers.valid_date_format?(options[key])
+
+        abort "Error: Invalid date format for --#{key}. Use YYYY-MM-DD or YYYYMMDD (e.g., 2026-01-01 or 20260101)"
+      end
+    end
+
+    def validate_mutually_exclusive!(*keys)
+      provided = keys.select { |k| options[k] }
+      return if provided.length <= 1
+
+      abort "Error: Cannot use both --#{provided[0]} and --#{provided[1]} options"
+    end
+
+    def require_id_or_file!(cfc_id, command)
+      return if cfc_id || options[:ids_file]
+
+      abort "Error: Either CFC_ID or --ids-file must be provided\n" \
+            "Usage: cfc #{command} CFC_ID\n" \
+            "       cfc #{command} --ids-file /path/to/ids.txt"
     end
   end
 end

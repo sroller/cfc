@@ -1,5 +1,24 @@
 ## [Unreleased]
 
+## [0.3.6] - 2026-04-23
+
+### Fixed
+
+- Fixed `fetch_csv` to return sanitized UTF-8 data, preventing `Encoding::CompatibilityError` when parsing newly downloaded rating files
+- `parse_ids_file` now aborts with a clear error message when the specified file doesn't exist
+
+### Changed
+
+- Refactored CLI validation into reusable private methods (`validate_format!`, `validate_dates!`, `validate_mutually_exclusive!`, `require_id_or_file!`)
+- Replaced `$stderr.puts; exit(1)` patterns with `abort` for cleaner error handling
+- Extracted common helpers into `Helpers` module (`normalize_date`, `parse_ids`, `parse_ids_file`, `format_location`, `display_expire`, `output_result`)
+- Unified output formatting across `diff`, `history`, `show`, and `find` commands via `Helpers.output_result`
+- Refactored `OutputFormatter` with shared `html_page` helper and `HTML_STYLES` constant
+- Replaced `$stderr.puts` with `warn` in `cleanup` command
+- Added nil/empty guards in `Downloader.parse_players` and `line_valid?`
+
+### Removed
+
 - Remove FIDE rating storage and display from the application
 - Remove `fide_rating` column from database schema
 - Remove FIDE number and rating parsing from CSV downloader

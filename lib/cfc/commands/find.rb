@@ -2,8 +2,7 @@
 
 require "date"
 require_relative "../db"
-require_relative "../output_formatter"
-require_relative "../mailer"
+require_relative "../helpers"
 
 module Cfc
   module Commands
@@ -23,23 +22,12 @@ module Cfc
           return
         end
 
-        # Default to HTML format when mailing
-        format = "html" if mail && format.nil?
+        count = players.length
+        subject = "Search Results (#{count} player#{"s" if count != 1} found)"
 
-        if format && format != "text"
-          output = OutputFormatter.format(players, format, type: :find, date_range: Date.today.to_s)
-          puts output
-
-          if mail
-            Mailer.send_mail(mail, "Search Results (#{players.length} player#{"s" if players.length != 1} found)", output)
-          end
-        else
+        Helpers.output_result(players, format: format, mail: mail, type: :find,
+                                       subject: subject, date_range: Date.today.to_s) do
           display_results(players)
-
-          if mail
-            output = OutputFormatter.format(players, "html", type: :find, date_range: Date.today.to_s)
-            Mailer.send_mail(mail, "Search Results (#{players.length} player#{"s" if players.length != 1} found)", output)
-          end
         end
       end
 
@@ -50,13 +38,10 @@ module Cfc
         players.each do |player|
           name = "#{player["first_name"]} #{player["last_name"]}".strip
           cfc_id = player["cfc_id"]
-          province = player["province"]
-          city = player["city"]
+          location = Helpers.format_location(player["city"], player["province"])
+          location_str = location.empty? ? "" : " (#{location})"
           rating = player["rating"] || 0
           active_rating = player["active_rating"] || 0
-
-          location = [city, province].compact.join(", ")
-          location_str = location.empty? ? "" : " (#{location})"
 
           puts "#{cfc_id}: #{name}#{location_str} - Rating: #{rating}, Active: #{active_rating}"
         end

@@ -9,7 +9,7 @@ module Cfc
       def self.list(filepath, db: nil)
         filepath = File.expand_path(filepath)
         unless File.exist?(filepath)
-          $stderr.puts "Error: File not found: #{filepath}"
+          warn "Error: File not found: #{filepath}"
           return false
         end
 
@@ -28,9 +28,9 @@ module Cfc
 
           player = db.get_player(cfc_id)
           if player
-            name = "#{player['first_name']} #{player['last_name']}".strip
-            province = player['province']
-            city = player['city']
+            name = "#{player["first_name"]} #{player["last_name"]}".strip
+            province = player["province"]
+            city = player["city"]
             location = [city, province].compact.join(", ")
             location_str = location.empty? ? "" : " (#{location})"
             puts "#{cfc_id} #{name}#{location_str}"
@@ -49,7 +49,7 @@ module Cfc
         filepath = File.expand_path(filepath)
 
         unless cfc_id.to_s =~ /^\d+$/
-          $stderr.puts "Error: Invalid CFC ID. Must be a number."
+          warn "Error: Invalid CFC ID. Must be a number."
           return false
         end
 
@@ -60,7 +60,7 @@ module Cfc
           lines = File.readlines(filepath).map(&:strip)
           existing_ids = lines.map { |line| parse_line(line) }.compact
           if existing_ids.include?(cfc_id)
-            $stderr.puts "Error: ID #{cfc_id} already exists in #{filepath}"
+            warn "Error: ID #{cfc_id} already exists in #{filepath}"
             return false
           end
         end
@@ -74,9 +74,9 @@ module Cfc
           db.close if own_db
 
           if player
-            name = "#{player['first_name']} #{player['last_name']}".strip
+            name = "#{player["first_name"]} #{player["last_name"]}".strip
           else
-            $stderr.puts "Warning: ID #{cfc_id} not found in database, adding without name"
+            warn "Warning: ID #{cfc_id} not found in database, adding without name"
             name = ""
           end
         end
@@ -89,7 +89,7 @@ module Cfc
         line_to_add = name.empty? ? cfc_id.to_s : "#{cfc_id} #{name}"
         File.open(filepath, "a") { |f| f.puts(line_to_add) }
 
-        $stderr.puts "Added #{line_to_add} to #{filepath}"
+        warn "Added #{line_to_add} to #{filepath}"
         true
       end
 
@@ -98,12 +98,12 @@ module Cfc
         filepath = File.expand_path(filepath)
 
         unless File.exist?(filepath)
-          $stderr.puts "Error: File not found: #{filepath}"
+          warn "Error: File not found: #{filepath}"
           return false
         end
 
         unless cfc_id.to_s =~ /^\d+$/
-          $stderr.puts "Error: Invalid CFC ID. Must be a number."
+          warn "Error: Invalid CFC ID. Must be a number."
           return false
         end
 
@@ -113,12 +113,12 @@ module Cfc
         filtered_lines = lines.reject { |line| parse_line(line.strip) == cfc_id }
 
         if filtered_lines.length == lines.length
-          $stderr.puts "Error: ID #{cfc_id} not found in #{filepath}"
+          warn "Error: ID #{cfc_id} not found in #{filepath}"
           return false
         end
 
         File.write(filepath, filtered_lines.join)
-        $stderr.puts "Removed ID #{cfc_id} from #{filepath}"
+        warn "Removed ID #{cfc_id} from #{filepath}"
         true
       end
 
@@ -127,7 +127,7 @@ module Cfc
         filepath = File.expand_path(filepath)
 
         unless File.exist?(filepath)
-          $stderr.puts "Error: File not found: #{filepath}"
+          warn "Error: File not found: #{filepath}"
           return false
         end
 
@@ -151,7 +151,7 @@ module Cfc
             valid += 1
           else
             invalid += 1
-            $stderr.puts "  [NOT FOUND] #{cfc_id}"
+            warn "  [NOT FOUND] #{cfc_id}"
           end
         end
 

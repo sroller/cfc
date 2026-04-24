@@ -44,54 +44,55 @@ class TestDiff < Minitest::Test
 
   # --- parse_ids tests ---
   def test_parse_ids_empty_string
-    assert_equal([], Cfc::Diff.parse_ids(""))
+    assert_equal([], Cfc::Helpers.parse_ids(""))
   end
 
   def test_parse_ids_single_id
-    assert_equal([100001], Cfc::Diff.parse_ids("100001"))
+    assert_equal([100_001], Cfc::Helpers.parse_ids("100001"))
   end
 
   def test_parse_ids_multiple_ids
-    assert_equal([100001, 100002, 100003], Cfc::Diff.parse_ids("100001,100002,100003"))
+    assert_equal([100_001, 100_002, 100_003], Cfc::Helpers.parse_ids("100001,100002,100003"))
   end
 
   def test_parse_ids_with_spaces
-    assert_equal([100001, 100002], Cfc::Diff.parse_ids("100001, 100002 "))
+    assert_equal([100_001, 100_002], Cfc::Helpers.parse_ids("100001, 100002 "))
   end
 
   def test_parse_ids_with_leading_zeros
-    assert_equal([100001, 100002], Cfc::Diff.parse_ids("00100001,000100002"))
+    assert_equal([100_001, 100_002], Cfc::Helpers.parse_ids("00100001,000100002"))
   end
 
   def test_parse_ids_with_negative_numbers
-    assert_equal([-1, -2, 100001], Cfc::Diff.parse_ids("-1,-2,100001"))
+    assert_equal([-1, -2, 100_001], Cfc::Helpers.parse_ids("-1,-2,100001"))
   end
 
   # --- parse_ids_file tests ---
   def test_parse_ids_file_nonexistent
-    result = Cfc::Diff.parse_ids_file("/nonexistent/path.txt")
-    assert_nil(result)
+    assert_raises(SystemExit) do
+      Cfc::Helpers.parse_ids_file("/nonexistent/path.txt")
+    end
   end
 
   def test_parse_ids_file_with_content
     tmpfile = File.join(@tmp_dir, "ids.txt")
     File.write(tmpfile, "100001\n100002\n")
-    ids = Cfc::Diff.parse_ids_file(tmpfile)
-    assert_equal([100001, 100002], ids)
+    ids = Cfc::Helpers.parse_ids_file(tmpfile)
+    assert_equal([100_001, 100_002], ids)
   end
 
   def test_parse_ids_file_with_empty_lines
     tmpfile = File.join(@tmp_dir, "ids.txt")
     File.write(tmpfile, "100001\n\n100002\n\n")
-    ids = Cfc::Diff.parse_ids_file(tmpfile)
-    assert_equal([100001, 100002], ids)
+    ids = Cfc::Helpers.parse_ids_file(tmpfile)
+    assert_equal([100_001, 100_002], ids)
   end
 
   def test_parse_ids_file_with_non_numeric_lines
     tmpfile = File.join(@tmp_dir, "ids.txt")
     File.write(tmpfile, "100001\nabc\n100002\n")
-    ids = Cfc::Diff.parse_ids_file(tmpfile)
-    assert_equal([100001, 100002], ids)
+    ids = Cfc::Helpers.parse_ids_file(tmpfile)
+    assert_equal([100_001, 100_002], ids)
   end
 
   def test_parse_ids_file_expands_tilde
@@ -104,8 +105,8 @@ class TestDiff < Minitest::Test
 
     # Use tilde path
     tilde_path = File.join("~", ".cfc_test_tmp", "ids.txt")
-    ids = Cfc::Diff.parse_ids_file(tilde_path)
-    assert_equal([100001, 100002], ids)
+    ids = Cfc::Helpers.parse_ids_file(tilde_path)
+    assert_equal([100_001, 100_002], ids)
   ensure
     FileUtils.rm_rf(test_dir) if Dir.exist?(test_dir)
   end
@@ -158,7 +159,7 @@ class TestDiff < Minitest::Test
 
     changes = Cfc::Diff.compare_players(from_players, to_players)
 
-    assert_equal(0, changes[:new].length)    # No new players in this case
+    assert_equal(0, changes[:new].length) # No new players in this case
     assert_equal(0, changes[:removed].length)  # Johnson is still in both dates
     assert_equal(3, changes[:changed].length)  # Smith, Doe, and Johnson (nil ratings) changed
   end
@@ -184,10 +185,12 @@ class TestDiff < Minitest::Test
 
   def test_compare_players_rating_only_changed
     from_players = [
-      { cfc_id: 100001, first_name: "John", last_name: "Smith", province: "ON", city: "Toronto", rating: 1000, active_rating: 1000 }
+      { cfc_id: 100_001, first_name: "John", last_name: "Smith", province: "ON", city: "Toronto", rating: 1000,
+        active_rating: 1000 }
     ]
     to_players = [
-      { cfc_id: 100001, first_name: "John", last_name: "Smith", province: "ON", city: "Toronto", rating: 1100, active_rating: 1000 }
+      { cfc_id: 100_001, first_name: "John", last_name: "Smith", province: "ON", city: "Toronto", rating: 1100,
+        active_rating: 1000 }
     ]
 
     changes = Cfc::Diff.compare_players(from_players, to_players)
@@ -201,10 +204,12 @@ class TestDiff < Minitest::Test
 
   def test_compare_players_active_only_changed
     from_players = [
-      { cfc_id: 100001, first_name: "John", last_name: "Smith", province: "ON", city: "Toronto", rating: 1000, active_rating: 1000 }
+      { cfc_id: 100_001, first_name: "John", last_name: "Smith", province: "ON", city: "Toronto", rating: 1000,
+        active_rating: 1000 }
     ]
     to_players = [
-      { cfc_id: 100001, first_name: "John", last_name: "Smith", province: "ON", city: "Toronto", rating: 1000, active_rating: 1100 }
+      { cfc_id: 100_001, first_name: "John", last_name: "Smith", province: "ON", city: "Toronto", rating: 1000,
+        active_rating: 1100 }
     ]
 
     changes = Cfc::Diff.compare_players(from_players, to_players)
@@ -218,10 +223,12 @@ class TestDiff < Minitest::Test
 
   def test_compare_players_both_ratings_changed
     from_players = [
-      { cfc_id: 100001, first_name: "John", last_name: "Smith", province: "ON", city: "Toronto", rating: 1000, active_rating: 1000 }
+      { cfc_id: 100_001, first_name: "John", last_name: "Smith", province: "ON", city: "Toronto", rating: 1000,
+        active_rating: 1000 }
     ]
     to_players = [
-      { cfc_id: 100001, first_name: "John", last_name: "Smith", province: "ON", city: "Toronto", rating: 1100, active_rating: 1100 }
+      { cfc_id: 100_001, first_name: "John", last_name: "Smith", province: "ON", city: "Toronto", rating: 1100,
+        active_rating: 1100 }
     ]
 
     changes = Cfc::Diff.compare_players(from_players, to_players)
@@ -235,10 +242,12 @@ class TestDiff < Minitest::Test
 
   def test_compare_players_nil_ratings_from
     from_players = [
-      { cfc_id: 100001, first_name: "John", last_name: "Smith", province: "ON", city: "Toronto", rating: nil, active_rating: nil }
+      { cfc_id: 100_001, first_name: "John", last_name: "Smith", province: "ON", city: "Toronto", rating: nil,
+        active_rating: nil }
     ]
     to_players = [
-      { cfc_id: 100001, first_name: "John", last_name: "Smith", province: "ON", city: "Toronto", rating: 1000, active_rating: 1000 }
+      { cfc_id: 100_001, first_name: "John", last_name: "Smith", province: "ON", city: "Toronto", rating: 1000,
+        active_rating: 1000 }
     ]
 
     changes = Cfc::Diff.compare_players(from_players, to_players)
@@ -250,10 +259,12 @@ class TestDiff < Minitest::Test
 
   def test_compare_players_nil_ratings_to
     from_players = [
-      { cfc_id: 100001, first_name: "John", last_name: "Smith", province: "ON", city: "Toronto", rating: 1000, active_rating: 1000 }
+      { cfc_id: 100_001, first_name: "John", last_name: "Smith", province: "ON", city: "Toronto", rating: 1000,
+        active_rating: 1000 }
     ]
     to_players = [
-      { cfc_id: 100001, first_name: "John", last_name: "Smith", province: "ON", city: "Toronto", rating: nil, active_rating: nil }
+      { cfc_id: 100_001, first_name: "John", last_name: "Smith", province: "ON", city: "Toronto", rating: nil,
+        active_rating: nil }
     ]
 
     changes = Cfc::Diff.compare_players(from_players, to_players)
@@ -265,10 +276,12 @@ class TestDiff < Minitest::Test
 
   def test_compare_players_same_ratings_no_change
     from_players = [
-      { cfc_id: 100001, first_name: "John", last_name: "Smith", province: "ON", city: "Toronto", rating: 1000, active_rating: 1000 }
+      { cfc_id: 100_001, first_name: "John", last_name: "Smith", province: "ON", city: "Toronto", rating: 1000,
+        active_rating: 1000 }
     ]
     to_players = [
-      { cfc_id: 100001, first_name: "John", last_name: "Smith", province: "ON", city: "Toronto", rating: 1000, active_rating: 1000 }
+      { cfc_id: 100_001, first_name: "John", last_name: "Smith", province: "ON", city: "Toronto", rating: 1000,
+        active_rating: 1000 }
     ]
 
     changes = Cfc::Diff.compare_players(from_players, to_players)
@@ -281,7 +294,8 @@ class TestDiff < Minitest::Test
   def test_compare_players_single_player_new
     from_players = []
     to_players = [
-      { cfc_id: 100001, first_name: "New", last_name: "Player", province: "ON", city: "Toronto", rating: 1500, active_rating: 1500 }
+      { cfc_id: 100_001, first_name: "New", last_name: "Player", province: "ON", city: "Toronto", rating: 1500,
+        active_rating: 1500 }
     ]
 
     changes = Cfc::Diff.compare_players(from_players, to_players)
@@ -293,7 +307,8 @@ class TestDiff < Minitest::Test
 
   def test_compare_players_single_player_removed
     from_players = [
-      { cfc_id: 100001, first_name: "Removed", last_name: "Player", province: "ON", city: "Toronto", rating: 1500, active_rating: 1500 }
+      { cfc_id: 100_001, first_name: "Removed", last_name: "Player", province: "ON", city: "Toronto", rating: 1500,
+        active_rating: 1500 }
     ]
     to_players = []
 
@@ -306,15 +321,22 @@ class TestDiff < Minitest::Test
 
   def test_compare_players_many_new_many_removed_many_changed
     from_players = [
-      { cfc_id: 1, first_name: "A", last_name: "Alpha", province: "AB", city: "Calgary", rating: 1000, active_rating: 1000 },
-      { cfc_id: 2, first_name: "B", last_name: "Beta", province: "BC", city: "Vancouver", rating: 1100, active_rating: 1100 },
-      { cfc_id: 3, first_name: "C", last_name: "Charlie", province: "ON", city: "Toronto", rating: 1200, active_rating: 1200 }
+      { cfc_id: 1, first_name: "A", last_name: "Alpha", province: "AB", city: "Calgary", rating: 1000,
+        active_rating: 1000 },
+      { cfc_id: 2, first_name: "B", last_name: "Beta", province: "BC", city: "Vancouver", rating: 1100,
+        active_rating: 1100 },
+      { cfc_id: 3, first_name: "C", last_name: "Charlie", province: "ON", city: "Toronto", rating: 1200,
+        active_rating: 1200 }
     ]
     to_players = [
-      { cfc_id: 2, first_name: "B", last_name: "Beta", province: "BC", city: "Vancouver", rating: 1200, active_rating: 1200 },
-      { cfc_id: 3, first_name: "C", last_name: "Charlie", province: "ON", city: "Toronto", rating: 1200, active_rating: 1250 },
-      { cfc_id: 4, first_name: "D", last_name: "Delta", province: "MB", city: "Winnipeg", rating: 1300, active_rating: 1300 },
-      { cfc_id: 5, first_name: "E", last_name: "Echo", province: "QC", city: "Montreal", rating: 1400, active_rating: 1400 }
+      { cfc_id: 2, first_name: "B", last_name: "Beta", province: "BC", city: "Vancouver", rating: 1200,
+        active_rating: 1200 },
+      { cfc_id: 3, first_name: "C", last_name: "Charlie", province: "ON", city: "Toronto", rating: 1200,
+        active_rating: 1250 },
+      { cfc_id: 4, first_name: "D", last_name: "Delta", province: "MB", city: "Winnipeg", rating: 1300,
+        active_rating: 1300 },
+      { cfc_id: 5, first_name: "E", last_name: "Echo", province: "QC", city: "Montreal", rating: 1400,
+        active_rating: 1400 }
     ]
 
     changes = Cfc::Diff.compare_players(from_players, to_players)
@@ -329,7 +351,7 @@ class TestDiff < Minitest::Test
     changes = {
       new: [
         {
-          cfc_id: 100001,
+          cfc_id: 100_001,
           first_name: "New",
           last_name: "Player",
           province: "ON",
@@ -356,7 +378,7 @@ class TestDiff < Minitest::Test
       new: [],
       removed: [
         {
-          cfc_id: 100002,
+          cfc_id: 100_002,
           first_name: "Retired",
           last_name: "Player",
           province: "BC",
@@ -383,7 +405,7 @@ class TestDiff < Minitest::Test
       removed: [],
       changed: [
         {
-          cfc_id: 100003,
+          cfc_id: 100_003,
           first_name: "Changed",
           last_name: "Player",
           province: "AB",
@@ -409,7 +431,7 @@ class TestDiff < Minitest::Test
     changes = {
       new: [
         {
-          cfc_id: 100001,
+          cfc_id: 100_001,
           first_name: "New",
           last_name: "Player",
           province: "ON",
@@ -420,7 +442,7 @@ class TestDiff < Minitest::Test
       ],
       removed: [
         {
-          cfc_id: 100002,
+          cfc_id: 100_002,
           first_name: "Retired",
           last_name: "Player",
           province: "BC",
@@ -431,7 +453,7 @@ class TestDiff < Minitest::Test
       ],
       changed: [
         {
-          cfc_id: 100003,
+          cfc_id: 100_003,
           first_name: "Changed",
           last_name: "Player",
           province: "AB",
@@ -461,7 +483,7 @@ class TestDiff < Minitest::Test
     changes = {
       new: [
         {
-          cfc_id: 100001,
+          cfc_id: 100_001,
           first_name: "No Location",
           last_name: "Player",
           province: nil,
@@ -488,7 +510,7 @@ class TestDiff < Minitest::Test
     changes = {
       new: [
         {
-          cfc_id: 100001,
+          cfc_id: 100_001,
           first_name: "No Rating",
           last_name: "Player",
           province: "ON",
@@ -565,47 +587,46 @@ class TestDiff < Minitest::Test
 
   # --- display_expire_info tests ---
   def test_display_expire_info_with_regular_date
-    assert_equal("Membership: 2025-12-31", Cfc::Diff.display_expire_info("2025-12-31"))
+    assert_equal("2025-12-31", Cfc::Helpers.display_expire("2025-12-31"))
   end
 
   def test_display_expire_info_with_life_membership
-    assert_equal("Membership: LIFE", Cfc::Diff.display_expire_info("2080-12-31"))
+    assert_equal("LIFE", Cfc::Helpers.display_expire("2080-12-31"))
   end
 
   def test_display_expire_info_with_nil
-    assert_equal("Membership: Unknown", Cfc::Diff.display_expire_info(nil))
+    assert_equal("Unknown", Cfc::Helpers.display_expire(nil))
   end
 
   def test_display_expire_info_with_empty_string
-    assert_equal("Membership: Unknown", Cfc::Diff.display_expire_info(""))
+    assert_equal("Unknown", Cfc::Helpers.display_expire(""))
   end
 
   def test_display_expire_info_with_50_years_plus
-    assert_equal("Membership: LIFE", Cfc::Diff.display_expire_info("2080-01-01"))
+    assert_equal("LIFE", Cfc::Helpers.display_expire("2080-01-01"))
   end
 
   def test_display_expire_info_with_50_years_minus
     # About 50 years from now (2026 + 50 = 2076)
-    refute_equal("Membership: LIFE", Cfc::Diff.display_expire_info("2075-12-31"))
+    refute_equal("LIFE", Cfc::Helpers.display_expire("2075-12-31"))
   end
 
   # --- normalize_date tests ---
   def test_normalize_date_yyyymmdd_format
-    assert_equal("2026-01-01", Cfc::Diff.normalize_date("20260101"))
+    assert_equal("2026-01-01", Cfc::Helpers.normalize_date("20260101"))
   end
 
   def test_normalize_date_already_formatted
-    assert_equal("2026-01-01", Cfc::Diff.normalize_date("2026-01-01"))
+    assert_equal("2026-01-01", Cfc::Helpers.normalize_date("2026-01-01"))
   end
 
   def test_normalize_date_invalid_format
-    assert_equal("invalid", Cfc::Diff.normalize_date("invalid"))
+    assert_equal("invalid", Cfc::Helpers.normalize_date("invalid"))
   end
 
   def test_normalize_date_short_string
-    assert_equal("2026", Cfc::Diff.normalize_date("2026"))
+    assert_equal("2026", Cfc::Helpers.normalize_date("2026"))
   end
-
 end
 
 class TestCommandsHistory < Minitest::Test
@@ -695,14 +716,14 @@ class TestCommandsHistory < Minitest::Test
 
   def test_display_player_history_nil_player
     output = capture_io do
-      Cfc::Commands::History.display_player_history(@db, 999999, nil, nil)
+      Cfc::Commands::History.run("999999", db_path: @db_path)
     end
 
     assert_match(/Player not found: 999999/, output)
   end
 
   def test_display_history_nil_history
-    player_data = { "first_name" => "Test", "last_name" => "User", "cfc_id" => 100001 }
+    player_data = { "first_name" => "Test", "last_name" => "User", "cfc_id" => 100_001 }
 
     output = capture_io do
       Cfc::Commands::History.display_history(player_data, [])
@@ -713,40 +734,41 @@ class TestCommandsHistory < Minitest::Test
   end
 
   def test_format_date_with_valid_date
-    assert_equal("2024-01-01", Cfc::Commands::History.format_date("20240101"))
+    assert_equal("2024-01-01", Cfc::Helpers.normalize_date("20240101"))
   end
 
   def test_format_date_with_already_formatted_date
-    assert_equal("2024-01-01", Cfc::Commands::History.format_date("2024-01-01"))
+    assert_equal("2024-01-01", Cfc::Helpers.normalize_date("2024-01-01"))
   end
 
   def test_parse_ids_file_nonexistent
-    result = Cfc::Commands::History.parse_ids_file("/nonexistent/path.txt")
-    assert_empty(result)
+    assert_raises(SystemExit) do
+      Cfc::Helpers.parse_ids_file("/nonexistent/path.txt")
+    end
   end
 
   def test_parse_ids_file_with_content
     tmpfile = File.join(@tmp_dir, "ids.txt")
     File.write(tmpfile, "100001\n100002\n")
-    ids = Cfc::Commands::History.parse_ids_file(tmpfile)
-    assert_equal([100001, 100002], ids)
+    ids = Cfc::Helpers.parse_ids_file(tmpfile)
+    assert_equal([100_001, 100_002], ids)
   end
 
   def test_parse_ids_file_with_empty_lines
     tmpfile = File.join(@tmp_dir, "ids.txt")
     File.write(tmpfile, "100001\n\n100002\n")
-    ids = Cfc::Commands::History.parse_ids_file(tmpfile)
-    assert_equal([100001, 100002], ids)
+    ids = Cfc::Helpers.parse_ids_file(tmpfile)
+    assert_equal([100_001, 100_002], ids)
   end
 
   def test_display_player_history_with_nil_rating
     output = capture_io do
-      Cfc::Commands::History.display_player_history(@db, 100002, nil, nil)
+      Cfc::Commands::History.run("100002", db_path: @db_path)
     end
 
     refute_nil(output)
     assert_match(/Jane Doe/, output)
-    assert_equal(1600, @db.get_current_ratings([100002]).first["rating"])
+    assert_equal(1600, @db.get_current_ratings([100_002]).first["rating"])
   end
 end
 
@@ -797,7 +819,7 @@ class TestCommandsShow < Minitest::Test
 
   def test_run_multiple_ids
     output = capture_io do
-      Cfc::Commands::Show.run(["100001", "100002"], db_path: @db_path)
+      Cfc::Commands::Show.run(%w[100001 100002], db_path: @db_path)
     end
 
     refute_nil(output)
@@ -808,7 +830,7 @@ class TestCommandsShow < Minitest::Test
 
   def test_display_player_info_nil_player
     output = capture_io do
-      Cfc::Commands::Show.display_player_info(@db, 999999)
+      Cfc::Commands::Show.run("999999", db_path: @db_path)
     end
 
     assert_match(/Player not found: 999999/, output)
@@ -816,7 +838,7 @@ class TestCommandsShow < Minitest::Test
 
   def test_display_player_with_nil_province_city
     player_data = {
-      "cfc_id" => 100001,
+      "cfc_id" => 100_001,
       "last_name" => "Test",
       "first_name" => "User",
       "province" => nil,
@@ -836,27 +858,28 @@ class TestCommandsShow < Minitest::Test
   end
 
   def test_parse_ids_file_nonexistent
-    result = Cfc::Commands::Show.parse_ids_file("/nonexistent/path.txt")
-    assert_empty(result)
+    assert_raises(SystemExit) do
+      Cfc::Helpers.parse_ids_file("/nonexistent/path.txt")
+    end
   end
 
   def test_parse_ids_file_with_content
     tmpfile = File.join(@tmp_dir, "ids.txt")
     File.write(tmpfile, "100001\n100002\n")
-    ids = Cfc::Commands::Show.parse_ids_file(tmpfile)
-    assert_equal([100001, 100002], ids)
+    ids = Cfc::Helpers.parse_ids_file(tmpfile)
+    assert_equal([100_001, 100_002], ids)
   end
 
   def test_parse_ids_file_with_empty_lines
     tmpfile = File.join(@tmp_dir, "ids.txt")
     File.write(tmpfile, "100001\n\n100002\n")
-    ids = Cfc::Commands::Show.parse_ids_file(tmpfile)
-    assert_equal([100001, 100002], ids)
+    ids = Cfc::Helpers.parse_ids_file(tmpfile)
+    assert_equal([100_001, 100_002], ids)
   end
 
   def test_display_player_with_no_rating_history
     player_data = {
-      "cfc_id" => 100003,
+      "cfc_id" => 100_003,
       "last_name" => "No",
       "first_name" => "Rating",
       "province" => "ON",
@@ -876,41 +899,41 @@ class TestCommandsShow < Minitest::Test
   end
 
   def test_display_expire_date_with_regular_date
-    assert_equal("2025-12-31", Cfc::Commands::Show.display_expire_date("2025-12-31"))
+    assert_equal("2025-12-31", Cfc::Helpers.display_expire("2025-12-31"))
   end
 
   def test_display_expire_date_with_life_membership
-    assert_equal("LIFE", Cfc::Commands::Show.display_expire_date("2080-12-31"))
+    assert_equal("LIFE", Cfc::Helpers.display_expire("2080-12-31"))
   end
 
   def test_display_expire_date_with_nil
-    assert_equal("Unknown", Cfc::Commands::Show.display_expire_date(nil))
+    assert_equal("Unknown", Cfc::Helpers.display_expire(nil))
   end
 
   def test_display_expire_date_with_empty_string
-    assert_equal("Unknown", Cfc::Commands::Show.display_expire_date(""))
+    assert_equal("Unknown", Cfc::Helpers.display_expire(""))
   end
 
   def test_display_expire_date_with_50_years_plus
-    assert_equal("LIFE", Cfc::Commands::Show.display_expire_date("2080-01-01"))
+    assert_equal("LIFE", Cfc::Helpers.display_expire("2080-01-01"))
   end
 
   def test_display_expire_date_with_50_years_minus
     # About 50 years from now (2026 + 50 = 2076)
-    refute_equal("LIFE", Cfc::Commands::Show.display_expire_date("2075-12-31"))
+    refute_equal("LIFE", Cfc::Helpers.display_expire("2075-12-31"))
   end
 
   def test_is_life_membership_with_future_date
-    refute(Cfc::Commands::Show.is_life_membership?("2075-12-31"))
+    refute(Cfc::Helpers.life_membership?("2075-12-31"))
   end
 
   def test_is_life_membership_with_far_future_date
-    assert(Cfc::Commands::Show.is_life_membership?("2080-12-31"))
+    assert(Cfc::Helpers.life_membership?("2080-12-31"))
   end
 
   def test_display_player_with_life_membership
     player_data = {
-      "cfc_id" => 100001,
+      "cfc_id" => 100_001,
       "last_name" => "Life",
       "first_name" => "Member",
       "province" => "ON",
@@ -931,7 +954,7 @@ class TestCommandsShow < Minitest::Test
 
   def test_display_player_with_regular_membership
     player_data = {
-      "cfc_id" => 100001,
+      "cfc_id" => 100_001,
       "last_name" => "Regular",
       "first_name" => "Member",
       "province" => "ON",
@@ -1145,10 +1168,10 @@ class TestCommandsCleanup < Minitest::Test
 
     # Create many duplicates to test batch deletion
     (1..50).each do |i|
-      date = i.to_s.rjust(2, '0')
+      date = i.to_s.rjust(2, "0")
       @db.db.execute(
         "INSERT INTO player_ratings (cfc_id, rating, active_rating, rating_date, download_date) VALUES (?, ?, ?, ?, ?)",
-        [100001, 1000, 1000, "2024-01-#{date}", "2024-01-#{date}"]
+        [100_001, 1000, 1000, "2024-01-#{date}", "2024-01-#{date}"]
       )
     end
 

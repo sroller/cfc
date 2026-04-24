@@ -17,26 +17,26 @@ class TestCfc < Minitest::Test
 
   # --- valid_date_format? tests ---
   def test_valid_date_format_with_dashes
-    assert(Cfc::CLI.valid_date_format?("2026-01-01"))
+    assert(Cfc::Helpers.valid_date_format?("2026-01-01"))
   end
 
   def test_valid_date_format_compact
-    assert(Cfc::CLI.valid_date_format?("20260101"))
+    assert(Cfc::Helpers.valid_date_format?("20260101"))
   end
 
   def test_valid_date_format_with_nil
-    refute(Cfc::CLI.valid_date_format?(nil))
+    refute(Cfc::Helpers.valid_date_format?(nil))
   end
 
   def test_valid_date_format_with_empty
-    refute(Cfc::CLI.valid_date_format?(""))
+    refute(Cfc::Helpers.valid_date_format?(""))
   end
 
   def test_valid_date_format_with_invalid
-    refute(Cfc::CLI.valid_date_format?("2026/01/01"))
-    refute(Cfc::CLI.valid_date_format?("01-01-2026"))
-    refute(Cfc::CLI.valid_date_format?("2026-1-1"))
-    refute(Cfc::CLI.valid_date_format?("2026"))
-    refute(Cfc::CLI.valid_date_format?("abc"))
+    refute(Cfc::Helpers.valid_date_format?("2026/01/01"))
+    refute(Cfc::Helpers.valid_date_format?("01-01-2026"))
+    refute(Cfc::Helpers.valid_date_format?("2026-1-1"))
+    refute(Cfc::Helpers.valid_date_format?("2026"))
+    refute(Cfc::Helpers.valid_date_format?("abc"))
   end
 end

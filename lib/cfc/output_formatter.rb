@@ -2,83 +2,94 @@
 
 require "cgi/escape"
 require "date"
+require_relative "helpers"
 
 module Cfc
   module OutputFormatter
+    HTML_STYLES = <<~CSS
+      body { font-family: sans-serif; margin: 2em; }
+      h1 { color: #333; }
+      h2 { color: #555; margin-top: 1.5em; }
+      table { border-collapse: collapse; width: 100%; margin-bottom: 1em; }
+      th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+      th { background-color: #f2f2f2; }
+      tr:nth-child(even) { background-color: #f9f9f9; }
+      .new { color: green; }
+      .removed { color: red; }
+      .expired { color: red; }
+      .summary { margin-top: 2em; padding: 1em; background: #f5f5f5; }
+    CSS
+
     def self.format(data, format, type:, date_range: nil)
       case format
       when "html"
         send("format_html_#{type}", data, date_range: date_range)
       when "csv"
         send("format_csv_#{type}", data, date_range: date_range)
-      else
-        nil
       end
+    end
+
+    def self.html_page(title, &block)
+      content = block.call
+      <<~HTML
+        <!DOCTYPE html>
+        <html>
+        <head><meta charset="UTF-8"><title>#{CGI.escapeHTML(title)}</title>
+        <style>
+        #{HTML_STYLES}
+        </style>
+        </head>
+        <body>
+        #{content}
+        </body>
+        </html>
+      HTML
     end
 
     # --- Diff formatters ---
 
     def self.format_html_diff(changes, date_range: nil)
       date_info = date_range ? " (#{date_range})" : " (#{Date.today})"
-      html = +<<~HTML
-        <!DOCTYPE html>
-        <html>
-        <head><meta charset="UTF-8"><title>Rating Changes#{CGI.escapeHTML(date_info)}</title>
-        <style>
-          body { font-family: sans-serif; margin: 2em; }
-          h1 { color: #333; }
-          h2 { color: #555; margin-top: 1.5em; }
-          table { border-collapse: collapse; width: 100%; margin-bottom: 1em; }
-          th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-          th { background-color: #f2f2f2; }
-          tr:nth-child(even) { background-color: #f9f9f9; }
-          .new { color: green; }
-          .removed { color: red; }
-          .expired { color: red; }
-          .summary { margin-top: 2em; padding: 1em; background: #f5f5f5; }
-        </style>
-        </head>
-        <body>
-        <h1>Rating Changes#{CGI.escapeHTML(date_info)}</h1>
-      HTML
+      title = "Rating Changes#{date_info}"
 
-      if changes[:new].any?
-        html += "<h2>New Players: #{changes[:new].count}</h2>\n"
-        html += diff_table(changes[:new], :new)
+      html_page(title) do
+        html = +"<h1>#{CGI.escapeHTML(title)}</h1>\n"
+
+        if changes[:new].any?
+          html += "<h2>New Players: #{changes[:new].count}</h2>\n"
+          html += diff_table(changes[:new], :new)
+        end
+
+        if changes[:removed].any?
+          html += "<h2>Retired Players: #{changes[:removed].count}</h2>\n"
+          html += diff_table(changes[:removed], :removed)
+        end
+
+        if changes[:changed].any?
+          html += "<h2>Changed Players: #{changes[:changed].count}</h2>\n"
+          html += changed_table(changes[:changed])
+        end
+
+        html += <<~SUMMARY
+          <div class="summary">
+            <h3>Summary</h3>
+            <p>New: #{changes[:new].count}</p>
+            <p>Retired: #{changes[:removed].count}</p>
+            <p>Changed: #{changes[:changed].count}</p>
+          </div>
+        SUMMARY
+
+        html
       end
-
-      if changes[:removed].any?
-        html += "<h2>Retired Players: #{changes[:removed].count}</h2>\n"
-        html += diff_table(changes[:removed], :removed)
-      end
-
-      if changes[:changed].any?
-        html += "<h2>Changed Players: #{changes[:changed].count}</h2>\n"
-        html += changed_table(changes[:changed])
-      end
-
-      html += <<~HTML
-        <div class="summary">
-          <h3>Summary</h3>
-          <p>New: #{changes[:new].count}</p>
-          <p>Retired: #{changes[:removed].count}</p>
-          <p>Changed: #{changes[:changed].count}</p>
-        </div>
-        </body>
-        </html>
-      HTML
-
-      html
     end
 
     def self.diff_table(players, type)
-      sort_key = ->(p) { [p[:province] || "", p[:city] || "", p[:last_name] || "", p[:first_name] || ""] }
       html = +"<table><tr><th>CFC ID</th><th>Name</th><th>Location</th><th>Rating</th><th>Active</th><th>Membership</th></tr>\n"
 
-      players.sort_by(&sort_key).each do |p|
+      players.sort_by(&Helpers::PLAYER_SORT_KEY).each do |p|
         name = "#{p[:first_name]} #{p[:last_name]}"
-        location = [p[:city], p[:province]].compact.join(", ")
-        expire = display_expire_info(p[:expire_date])
+        location = Helpers.format_location(p[:city], p[:province])
+        expire = Helpers.display_expire(p[:expire_date])
         rating = p[:rating] || 0
         active = p[:active_rating] || 0
         prefix = type == :new ? "+" : "-"
@@ -91,13 +102,12 @@ module Cfc
     end
 
     def self.changed_table(changes)
-      sort_key = ->(c) { [c[:to][:province] || "", c[:to][:city] || "", c[:to][:last_name] || "", c[:to][:first_name] || ""] }
       html = +"<table><tr><th>CFC ID</th><th>Name</th><th>Location</th><th>Rating</th><th>Active</th><th>Membership</th></tr>\n"
 
-      changes.sort_by(&sort_key).each do |c|
+      changes.sort_by(&Helpers::PLAYER_SORT_KEY).each do |c|
         name = "#{c[:to][:first_name]} #{c[:to][:last_name]}"
-        location = [c[:to][:city], c[:to][:province]].compact.join(", ")
-        expire = display_expire_info(c[:to][:expire_date])
+        location = Helpers.format_location(c[:to][:city], c[:to][:province])
+        expire = Helpers.display_expire(c[:to][:expire_date])
         rating_change = format_rating_change(c[:from][:rating], c[:to][:rating], c[:rating_changed])
         active_change = format_rating_change(c[:from][:active_rating], c[:to][:active_rating], c[:active_changed])
         expire_html = expire_html_for(c[:to][:expire_date], expire)
@@ -111,25 +121,26 @@ module Cfc
       lines = []
       date_info = date_range || Date.today.to_s
       lines << "# Rating Changes (#{date_info})"
-      sort_key = ->(p) { [p[:province] || "", p[:city] || "", p[:last_name] || "", p[:first_name] || ""] }
 
       if changes[:new].any?
         lines << "type,cfc_id,first_name,last_name,province,city,rating,active_rating,membership"
-        changes[:new].sort_by(&sort_key).each do |p|
-          lines << csv_row("new", p[:cfc_id], p[:first_name], p[:last_name], p[:province], p[:city], p[:rating], p[:active_rating], p[:expire_date])
+        changes[:new].sort_by(&Helpers::PLAYER_SORT_KEY).each do |p|
+          lines << csv_row("new", p[:cfc_id], p[:first_name], p[:last_name], p[:province], p[:city], p[:rating],
+                           p[:active_rating], p[:expire_date])
         end
       end
 
       if changes[:removed].any?
         lines << "type,cfc_id,first_name,last_name,province,city,rating,active_rating,membership"
-        changes[:removed].sort_by(&sort_key).each do |p|
-          lines << csv_row("removed", p[:cfc_id], p[:first_name], p[:last_name], p[:province], p[:city], p[:rating], p[:active_rating], p[:expire_date])
+        changes[:removed].sort_by(&Helpers::PLAYER_SORT_KEY).each do |p|
+          lines << csv_row("removed", p[:cfc_id], p[:first_name], p[:last_name], p[:province], p[:city], p[:rating],
+                           p[:active_rating], p[:expire_date])
         end
       end
 
       if changes[:changed].any?
         lines << "type,cfc_id,first_name,last_name,province,city,from_rating,to_rating,from_active,to_active,membership"
-        changes[:changed].sort_by(&sort_key).each do |c|
+        changes[:changed].sort_by(&Helpers::PLAYER_SORT_KEY).each do |c|
           lines << csv_row_changed(c)
         end
       end
@@ -149,39 +160,21 @@ module Cfc
       history = data[:history]
       name = "#{player["first_name"]} #{player["last_name"]}".strip
       date_info = date_range ? " (#{date_range})" : ""
-      html = +<<~HTML
-        <!DOCTYPE html>
-        <html>
-        <head><meta charset="UTF-8"><title>Rating History - #{CGI.escapeHTML(name)}#{CGI.escapeHTML(date_info)}</title>
-        <style>
-          body { font-family: sans-serif; margin: 2em; }
-          h1 { color: #333; }
-          table { border-collapse: collapse; width: 100%; }
-          th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-          th { background-color: #f2f2f2; }
-          tr:nth-child(even) { background-color: #f9f9f9; }
-        </style>
-        </head>
-        <body>
-        <h1>Rating History for #{CGI.escapeHTML(name)} (CFC ID: #{player["cfc_id"]})#{CGI.escapeHTML(date_info)}</h1>
-        <table>
-        <tr><th>Date</th><th>Rating</th><th>Active</th></tr>
-      HTML
+      title = "Rating History - #{name}#{date_info}"
 
-      history.each do |record|
-        rating = record["rating"] || 0
-        active = record["active_rating"] || 0
-        html += "<tr><td>#{record["rating_date"]}</td><td>#{rating}</td><td>#{active}</td></tr>\n"
+      html_page(title) do
+        html = +"<h1>Rating History for #{CGI.escapeHTML(name)} (CFC ID: #{player["cfc_id"]})#{CGI.escapeHTML(date_info)}</h1>\n"
+        html += "<table>\n<tr><th>Date</th><th>Rating</th><th>Active</th></tr>\n"
+
+        history.each do |record|
+          rating = record["rating"] || 0
+          active = record["active_rating"] || 0
+          html += "<tr><td>#{record["rating_date"]}</td><td>#{rating}</td><td>#{active}</td></tr>\n"
+        end
+
+        html += "</table>\n<p>Total records: #{history.length}</p>\n"
+        html
       end
-
-      html += <<~HTML
-        </table>
-        <p>Total records: #{history.length}</p>
-        </body>
-        </html>
-      HTML
-
-      html
     end
 
     def self.format_csv_history(data, date_range: nil)
@@ -210,37 +203,25 @@ module Cfc
       rating = player["rating"] || 0
       active_rating = player["active_rating"] || 0
       rating_date = player["rating_date"]
-      expire_date = display_expire_info(player["expire_date"])
+      expire_date = Helpers.display_expire(player["expire_date"])
       expire_html = expire_html_for(player["expire_date"], expire_date)
       report_date = date_range || Date.today.to_s
+      title = "#{name} - Report #{report_date}"
 
-      <<~HTML
-        <!DOCTYPE html>
-        <html>
-        <head><meta charset="UTF-8"><title>#{CGI.escapeHTML(name)} - Report #{report_date}</title>
-        <style>
-          body { font-family: sans-serif; margin: 2em; }
-          h1 { color: #333; }
-          table { border-collapse: collapse; }
-          th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-          th { background-color: #f2f2f2; width: 150px; }
-          .expired { color: red; }
-        </style>
-        </head>
-        <body>
-        <h1>Player Information (Report: #{report_date})</h1>
-        <table>
-        <tr><th>Name</th><td>#{CGI.escapeHTML(name)}</td></tr>
-        <tr><th>CFC ID</th><td>#{player["cfc_id"]}</td></tr>
-        <tr><th>Province</th><td>#{CGI.escapeHTML(province || "")}</td></tr>
-        <tr><th>City</th><td>#{CGI.escapeHTML(city || "")}</td></tr>
-        <tr><th>Membership</th><td>#{expire_html}</td></tr>
-        <tr><th>Rating (#{rating_date})</th><td>#{rating}</td></tr>
-        <tr><th>Active Rating</th><td>#{active_rating}</td></tr>
-        </table>
-        </body>
-        </html>
-      HTML
+      html_page(title) do
+        <<~BODY
+          <h1>Player Information (Report: #{report_date})</h1>
+          <table>
+          <tr><th>Name</th><td>#{CGI.escapeHTML(name)}</td></tr>
+          <tr><th>CFC ID</th><td>#{player["cfc_id"]}</td></tr>
+          <tr><th>Province</th><td>#{CGI.escapeHTML(province || "")}</td></tr>
+          <tr><th>City</th><td>#{CGI.escapeHTML(city || "")}</td></tr>
+          <tr><th>Membership</th><td>#{expire_html}</td></tr>
+          <tr><th>Rating (#{rating_date})</th><td>#{rating}</td></tr>
+          <tr><th>Active Rating</th><td>#{active_rating}</td></tr>
+          </table>
+        BODY
+      end
     end
 
     def self.format_csv_show(player, date_range: nil)
@@ -263,40 +244,23 @@ module Cfc
 
     def self.format_html_find(players, date_range: nil)
       report_date = date_range || Date.today.to_s
-      html = +<<~HTML
-        <!DOCTYPE html>
-        <html>
-        <head><meta charset="UTF-8"><title>Search Results - Report #{report_date}</title>
-        <style>
-          body { font-family: sans-serif; margin: 2em; }
-          h1 { color: #333; }
-          table { border-collapse: collapse; width: 100%; }
-          th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-          th { background-color: #f2f2f2; }
-          tr:nth-child(even) { background-color: #f9f9f9; }
-        </style>
-        </head>
-        <body>
-        <h1>Search Results (Report: #{report_date}, #{players.length} player#{"s" if players.length != 1} found)</h1>
-        <table>
-        <tr><th>CFC ID</th><th>Name</th><th>Location</th><th>Rating</th><th>Active</th></tr>
-      HTML
+      title = "Search Results - Report #{report_date}"
 
-      players.each do |player|
-        name = "#{player["first_name"]} #{player["last_name"]}".strip
-        location = [player["city"], player["province"]].compact.join(", ")
-        rating = player["rating"] || 0
-        active = player["active_rating"] || 0
-        html += "<tr><td>#{player["cfc_id"]}</td><td>#{CGI.escapeHTML(name)}</td><td>#{CGI.escapeHTML(location)}</td><td>#{rating}</td><td>#{active}</td></tr>\n"
+      html_page(title) do
+        html = +"<h1>Search Results (Report: #{report_date}, #{players.length} player#{"s" if players.length != 1} found)</h1>\n"
+        html += "<table>\n<tr><th>CFC ID</th><th>Name</th><th>Location</th><th>Rating</th><th>Active</th></tr>\n"
+
+        players.each do |player|
+          name = "#{player["first_name"]} #{player["last_name"]}".strip
+          location = Helpers.format_location(player["city"], player["province"])
+          rating = player["rating"] || 0
+          active = player["active_rating"] || 0
+          html += "<tr><td>#{player["cfc_id"]}</td><td>#{CGI.escapeHTML(name)}</td><td>#{CGI.escapeHTML(location)}</td><td>#{rating}</td><td>#{active}</td></tr>\n"
+        end
+
+        html += "</table>\n"
+        html
       end
-
-      html += <<~HTML
-        </table>
-        </body>
-        </html>
-      HTML
-
-      html
     end
 
     def self.format_csv_find(players, date_range: nil)
@@ -312,31 +276,13 @@ module Cfc
     # --- Helpers ---
 
     def self.display_expire_info(expire_date)
-      return "Unknown" if expire_date.nil? || expire_date.empty?
-
-      require_relative "commands/show"
-      if Cfc::Commands::Show.is_life_membership?(expire_date)
-        "LIFE"
-      else
-        expire_date
-      end
+      Helpers.display_expire(expire_date)
     end
 
     def self.expire_html_for(expire_date, display_text)
-      return CGI.escapeHTML(display_text) if expire_date.nil? || expire_date.empty?
+      return CGI.escapeHTML(display_text) if expire_date.nil? || expire_date.to_s.empty?
+      return CGI.escapeHTML(display_text) if Helpers.life_membership?(expire_date)
 
-      require_relative "commands/show"
-
-      # Check for life membership
-      begin
-        is_life = Cfc::Commands::Show.is_life_membership?(expire_date)
-        return CGI.escapeHTML(display_text) if is_life
-      rescue ArgumentError, Date::Error
-        # If we can't parse the date, just display it
-        return CGI.escapeHTML(display_text)
-      end
-
-      # Check if the date is in the past (expired)
       begin
         date = Date.parse(expire_date)
         if date < Date.today
@@ -352,15 +298,16 @@ module Cfc
     def self.format_rating_change(from_val, to_val, changed)
       from = from_val || 0
       to = to_val || 0
-      return "#{from}" unless changed
+      return from.to_s unless changed
 
       diff = to - from
-      sign = diff > 0 ? "+" : ""
+      sign = diff.positive? ? "+" : ""
       "#{from} &rarr; #{to} (#{sign}#{diff})"
     end
 
     def self.csv_row(type, cfc_id, first_name, last_name, province, city, rating, active_rating, expire_date)
-      [type, cfc_id, first_name, last_name, province, city, rating || 0, active_rating || 0, expire_date || "Unknown"].map { |v| v.to_s }.join(",")
+      [type, cfc_id, first_name, last_name, province, city, rating || 0, active_rating || 0,
+       expire_date || "Unknown"].map(&:to_s).join(",")
     end
 
     def self.csv_row_changed(c)

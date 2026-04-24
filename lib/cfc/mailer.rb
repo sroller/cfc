@@ -9,7 +9,7 @@ module Cfc
       recipients = parse_recipients(recipients)
       return if recipients.empty?
 
-      from ||= ENV.fetch("CFC_MAIL_FROM", "cfc@localhost")
+      from ||= ENV.fetch("CFC_MAIL_FROM", "steffen.roller@gmail.com")
 
       text_body ||= html_to_text(html_body)
 
@@ -34,9 +34,9 @@ module Cfc
       mail.delivery_method :smtp, settings
       mail.deliver!
 
-      $stderr.puts "Email sent to #{recipients.join(", ")}"
+      warn "Email sent to #{recipients.join(", ")}"
     rescue StandardError => e
-      $stderr.puts "Error sending email: #{e.message}"
+      warn "Error sending email: #{e.message}"
       raise
     end
 
@@ -60,8 +60,7 @@ module Cfc
       # Strip HTML tags and clean up whitespace
       text = html.gsub(/<[^>]+>/, " ")
       text = text.gsub(/&\w+;/, "")
-      text = text.gsub(/\s+/, " ").strip
-      text
+      text.gsub(/\s+/, " ").strip
     end
   end
 end

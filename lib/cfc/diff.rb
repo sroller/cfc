@@ -2,70 +2,49 @@
 
 require "csv"
 require "date"
-require_relative "commands/show"
-require_relative "output_formatter"
-require_relative "mailer"
+require_relative "helpers"
 
 module Cfc
   class Diff
     def self.run(from: nil, to: nil, ids: nil, ids_file: nil, show_spinner: true, db_path: nil, format: nil, mail: nil)
-      # Default to HTML format when mailing
-      format = "html" if mail && format.nil?
-
       spinner = Thread.new { run_spinner } if show_spinner && $stdout.tty?
 
-      # Get ratings from database for from and to dates
       db = Database.new(db_path)
+      from = Helpers.normalize_date(from) if from
+      to = Helpers.normalize_date(to) if to
 
-      # Get default dates if not provided (latest two available snapshots)
-      from, to = get_default_dates(db) if from.nil? || to.nil?
+      if from.nil? || to.nil?
+        default_from, default_to = get_default_dates(db)
+        from ||= default_from
+        to ||= default_to
+      end
 
-      # Normalize date format from YYYYMMDD to YYYY-MM-DD if needed
-      from = normalize_date(from) if from
-      to = normalize_date(to) if to
-
-      # Parse IDs filter if provided
-      id_filter = parse_ids(ids) if ids
-      id_filter = parse_ids_file(ids_file) if ids_file
+      id_filter = Helpers.parse_ids(ids) if ids
+      id_filter = Helpers.parse_ids_file(ids_file) if ids_file
 
       from_players = get_players_by_date(db, from)
       to_players = get_players_by_date(db, to)
       db.close
 
-      # Stop spinner
       spinner&.kill
-      print "\r\e[K" if spinner # Clear the spinner line only if spinner was running
+      print "\r\e[K" if spinner
 
       if from_players.empty? || to_players.empty?
-        $stderr.puts "Could not find data for #{from} and #{to}"
+        warn "Could not find data for #{from} and #{to}"
         return
       end
 
-      # Apply ID filter if provided
       if id_filter
         from_players = from_players.select { |p| id_filter.include?(p[:cfc_id]) }
         to_players = to_players.select { |p| id_filter.include?(p[:cfc_id]) }
       end
 
-      # Find changes
       changes = compare_players(from_players, to_players)
+      date_range = "#{from} to #{to}"
 
-      # Print results
-      if format && format != "text"
-        date_range = "#{from} to #{to}"
-        output = OutputFormatter.format(changes, format, type: :diff, date_range: date_range)
-        puts output
-
-        if mail
-          Mailer.send_mail(mail, "Rating Changes (#{date_range})", output)
-        end
-      else
+      Helpers.output_result(changes, format: format, mail: mail, type: :diff,
+                                     subject: "Rating Changes (#{date_range})", date_range: date_range) do
         print_changes(changes)
-
-        if mail
-          output = OutputFormatter.format(changes, "html", type: :diff, date_range: "#{from} to #{to}")
-          Mailer.send_mail(mail, "Rating Changes (#{from} to #{to})", output)
-        end
       end
     end
 
@@ -77,27 +56,6 @@ module Cfc
         i = (i + 1) % chars.length
         sleep(0.1)
       end
-    end
-
-    def self.normalize_date(date_str)
-      return date_str if date_str.include?("-") # Already in YYYY-MM-DD format
-      return date_str unless date_str.length == 8
-
-      # Convert YYYYMMDD to YYYY-MM-DD
-      "#{date_str[0..3]}-#{date_str[4..5]}-#{date_str[6..7]}"
-    rescue StandardError
-      date_str
-    end
-
-    def self.parse_ids(ids_string)
-      ids_string.split(",").map(&:strip).map(&:to_i)
-    end
-
-    def self.parse_ids_file(filepath)
-      filepath = File.expand_path(filepath)
-      return nil unless File.exist?(filepath)
-
-      File.readlines(filepath).map(&:strip).reject(&:empty?).reject { |l| l.start_with?("#") }.map { |l| l.split.first.to_i }.reject(&:zero?)
     end
 
     def self.get_players_by_date(db, date)
@@ -124,7 +82,7 @@ module Cfc
       SQL
 
       if dates.length < 2
-        $stderr.puts "Not enough rating snapshots available (need at least 2, found #{dates.length})"
+        warn "Not enough rating snapshots available (need at least 2, found #{dates.length})"
         exit(1)
       end
 
@@ -178,55 +136,43 @@ module Cfc
       puts "=== Rating Changes ==="
       puts
 
-      # Sort players by province, then city
-      sort_key = ->(p) { [p[:province] || "", p[:city] || "", p[:last_name] || "", p[:first_name] || ""] }
-
-      # New players
       if changes[:new].any?
         puts "New Players: #{changes[:new].count}"
-        changes[:new].sort_by(&sort_key).each do |p|
+        changes[:new].sort_by(&Helpers::PLAYER_SORT_KEY).each do |p|
           name = "#{p[:first_name]} #{p[:last_name]}"
-          province = p[:province]
-          city = p[:city]
-          location_parts = [city, province].compact
-          location = location_parts.any? ? " (#{location_parts.join(", ")})" : ""
-          expire_info = display_expire_info(p[:expire_date])
-          puts "  + #{p[:cfc_id]} #{name}#{location}: Rating: #{p[:rating]}, Active: #{p[:active_rating]}, #{expire_info}"
+          location = Helpers.format_location(p[:city], p[:province])
+          location_str = location.empty? ? "" : " (#{location})"
+          expire_info = Helpers.display_expire(p[:expire_date])
+          puts "  + #{p[:cfc_id]} #{name}#{location_str}: Rating: #{p[:rating]}, Active: #{p[:active_rating]}, Membership: #{expire_info}"
         end
         puts
       end
 
-      # Retired players (no longer in newer rating list) - only show if there are any
       if changes[:removed].any?
         puts "Retired Players: #{changes[:removed].count}"
-        changes[:removed].sort_by(&sort_key).each do |p|
+        changes[:removed].sort_by(&Helpers::PLAYER_SORT_KEY).each do |p|
           name = "#{p[:first_name]} #{p[:last_name]}"
-          province = p[:province]
-          city = p[:city]
-          location_parts = [city, province].compact
-          location = location_parts.any? ? " (#{location_parts.join(", ")})" : ""
-          expire_info = display_expire_info(p[:expire_date])
-          puts "  - #{p[:cfc_id]} #{name}#{location}: Last Rating: #{p[:rating]}, Last Active: #{p[:active_rating]}, #{expire_info}"
+          location = Helpers.format_location(p[:city], p[:province])
+          location_str = location.empty? ? "" : " (#{location})"
+          expire_info = Helpers.display_expire(p[:expire_date])
+          puts "  - #{p[:cfc_id]} #{name}#{location_str}: Last Rating: #{p[:rating]}, Last Active: #{p[:active_rating]}, Membership: #{expire_info}"
         end
         puts
       end
 
-      # Changed players - only show if national rating or active rating changed
       if changes[:changed].any?
         puts "Changed Players: #{changes[:changed].count}"
-        changes[:changed].sort_by(&sort_key).each do |c|
+        changes[:changed].sort_by(&Helpers::PLAYER_SORT_KEY).each do |c|
           name = "#{c[:to][:first_name]} #{c[:to][:last_name]}"
-          province = c[:to][:province]
-          city = c[:to][:city]
-          location_parts = [city, province].compact
-          location = location_parts.any? ? " (#{location_parts.join(", ")})" : ""
-          expire_info = display_expire_info(c[:to][:expire_date])
+          location = Helpers.format_location(c[:to][:city], c[:to][:province])
+          location_str = location.empty? ? "" : " (#{location})"
+          expire_info = Helpers.display_expire(c[:to][:expire_date])
 
           changes_list = []
           changes_list << "Rating: #{c[:from][:rating]} -> #{c[:to][:rating]}" if c[:rating_changed]
           changes_list << "Active: #{c[:from][:active_rating]} -> #{c[:to][:active_rating]}" if c[:active_changed]
 
-          puts "  #{c[:cfc_id]} #{name}#{location}: #{changes_list.join(", ")}, #{expire_info}"
+          puts "  #{c[:cfc_id]} #{name}#{location_str}: #{changes_list.join(", ")}, Membership: #{expire_info}"
         end
         puts
       end
@@ -236,17 +182,6 @@ module Cfc
       puts "  New: #{changes[:new].count}"
       puts "  Retired: #{changes[:removed].count}" if changes[:removed].any?
       puts "  Changed: #{changes[:changed].count}"
-    end
-
-    def self.display_expire_info(expire_date)
-      return "Membership: Unknown" if expire_date.nil? || expire_date.empty?
-
-      # Check for life membership (more than 50 years in the future)
-      if Cfc::Commands::Show.is_life_membership?(expire_date)
-        "Membership: LIFE"
-      else
-        "Membership: #{expire_date}"
-      end
     end
   end
 end

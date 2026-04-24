@@ -16,43 +16,43 @@ class TestIdsCommand < Minitest::Test
     # Create test database with sample data
     @db = Cfc::Database.new(@test_db_path)
     @db.save_players([
-      {
-        cfc_id: 100001,
-        last_name: "Smith",
-        first_name: "John",
-        province: "ON",
-        city: "Toronto",
-        expire_date: "2027-12-31",
-        rating: 1500,
-        active_rating: 1550,
-        high_rating: 1600,
-        active_high_rating: 1650
-      },
-      {
-        cfc_id: 100002,
-        last_name: "Johnson",
-        first_name: "Jane",
-        province: "BC",
-        city: "Vancouver",
-        expire_date: "2026-06-30",
-        rating: 1800,
-        active_rating: 1850,
-        high_rating: 1900,
-        active_high_rating: 1950
-      },
-      {
-        cfc_id: 100003,
-        last_name: "Doe",
-        first_name: "Alice",
-        province: "QC",
-        city: "Montreal",
-        expire_date: "LIFE",
-        rating: 2000,
-        active_rating: 2050,
-        high_rating: 2100,
-        active_high_rating: 2150
-      }
-    ], "2026-04-20", dedupe: false)
+                       {
+                         cfc_id: 100_001,
+                         last_name: "Smith",
+                         first_name: "John",
+                         province: "ON",
+                         city: "Toronto",
+                         expire_date: "2027-12-31",
+                         rating: 1500,
+                         active_rating: 1550,
+                         high_rating: 1600,
+                         active_high_rating: 1650
+                       },
+                       {
+                         cfc_id: 100_002,
+                         last_name: "Johnson",
+                         first_name: "Jane",
+                         province: "BC",
+                         city: "Vancouver",
+                         expire_date: "2026-06-30",
+                         rating: 1800,
+                         active_rating: 1850,
+                         high_rating: 1900,
+                         active_high_rating: 1950
+                       },
+                       {
+                         cfc_id: 100_003,
+                         last_name: "Doe",
+                         first_name: "Alice",
+                         province: "QC",
+                         city: "Montreal",
+                         expire_date: "LIFE",
+                         rating: 2000,
+                         active_rating: 2050,
+                         high_rating: 2100,
+                         active_high_rating: 2150
+                       }
+                     ], "2026-04-20", dedupe: false)
     @db.close
   end
 
@@ -127,7 +127,7 @@ class TestIdsCommand < Minitest::Test
     ids_file = File.join(@tmp_dir, "test.ids")
 
     test_db = Cfc::Database.new(@test_db_path)
-    output = capture_io { Cfc::Commands::Ids.add(ids_file, 100001, db: test_db) }
+    output = capture_io { Cfc::Commands::Ids.add(ids_file, 100_001, db: test_db) }
     test_db.close
     assert File.exist?(ids_file)
     content = File.read(ids_file)
@@ -139,7 +139,7 @@ class TestIdsCommand < Minitest::Test
     ids_file = File.join(@tmp_dir, "test.ids")
 
     test_db = Cfc::Database.new(@test_db_path)
-    capture_io { Cfc::Commands::Ids.add(ids_file, 100001, "Custom Name", db: test_db) }
+    capture_io { Cfc::Commands::Ids.add(ids_file, 100_001, "Custom Name", db: test_db) }
     test_db.close
     content = File.read(ids_file)
     assert_includes content, "100001 Custom Name"
@@ -150,7 +150,7 @@ class TestIdsCommand < Minitest::Test
     File.write(ids_file, "100001\n")
 
     test_db = Cfc::Database.new(@test_db_path)
-    output = capture_io { Cfc::Commands::Ids.add(ids_file, 100001, db: test_db) }
+    output = capture_io { Cfc::Commands::Ids.add(ids_file, 100_001, db: test_db) }
     test_db.close
     assert_includes output, "Error: ID 100001 already exists"
   end
@@ -166,7 +166,7 @@ class TestIdsCommand < Minitest::Test
     ids_file = File.join(@tmp_dir, "subdir", "test.ids")
 
     test_db = Cfc::Database.new(@test_db_path)
-    capture_io { Cfc::Commands::Ids.add(ids_file, 100001, db: test_db) }
+    capture_io { Cfc::Commands::Ids.add(ids_file, 100_001, db: test_db) }
     test_db.close
     assert File.exist?(ids_file)
   end
@@ -175,7 +175,7 @@ class TestIdsCommand < Minitest::Test
     ids_file = File.join(@tmp_dir, "test.ids")
 
     test_db = Cfc::Database.new(@test_db_path)
-    output = capture_io { Cfc::Commands::Ids.add(ids_file, 999999, db: test_db) }
+    output = capture_io { Cfc::Commands::Ids.add(ids_file, 999_999, db: test_db) }
     test_db.close
     assert File.exist?(ids_file)
     content = File.read(ids_file)
@@ -188,7 +188,7 @@ class TestIdsCommand < Minitest::Test
     ids_file = File.join(@tmp_dir, "test.ids")
     File.write(ids_file, "100001\n100002\n100003\n")
 
-    output = capture_io { Cfc::Commands::Ids.remove(ids_file, 100002) }
+    output = capture_io { Cfc::Commands::Ids.remove(ids_file, 100_002) }
     content = File.read(ids_file)
     refute_includes content, "100002"
     assert_includes content, "100001"
@@ -200,7 +200,7 @@ class TestIdsCommand < Minitest::Test
     ids_file = File.join(@tmp_dir, "test.ids")
     File.write(ids_file, "100001 John Smith\n100002 Jane Johnson\n")
 
-    capture_io { Cfc::Commands::Ids.remove(ids_file, 100001) }
+    capture_io { Cfc::Commands::Ids.remove(ids_file, 100_001) }
     content = File.read(ids_file)
     refute_includes content, "100001"
     assert_includes content, "100002 Jane Johnson"
@@ -210,12 +210,12 @@ class TestIdsCommand < Minitest::Test
     ids_file = File.join(@tmp_dir, "test.ids")
     File.write(ids_file, "100001\n100002\n")
 
-    output = capture_io { Cfc::Commands::Ids.remove(ids_file, 999999) }
+    output = capture_io { Cfc::Commands::Ids.remove(ids_file, 999_999) }
     assert_includes output, "Error: ID 999999 not found"
   end
 
   def test_remove_nonexistent_file
-    output = capture_io { Cfc::Commands::Ids.remove("/nonexistent/file.ids", 100001) }
+    output = capture_io { Cfc::Commands::Ids.remove("/nonexistent/file.ids", 100_001) }
     assert_includes output, "Error: File not found"
   end
 
@@ -272,15 +272,15 @@ class TestIdsCommand < Minitest::Test
 
   # Test parse_line helper
   def test_parse_line_with_number_only
-    assert_equal 100001, Cfc::Commands::Ids.parse_line("100001")
+    assert_equal 100_001, Cfc::Commands::Ids.parse_line("100001")
   end
 
   def test_parse_line_with_name
-    assert_equal 100001, Cfc::Commands::Ids.parse_line("100001 John Smith")
+    assert_equal 100_001, Cfc::Commands::Ids.parse_line("100001 John Smith")
   end
 
   def test_parse_line_with_comment
-    assert_equal 100001, Cfc::Commands::Ids.parse_line("100001 # comment")
+    assert_equal 100_001, Cfc::Commands::Ids.parse_line("100001 # comment")
   end
 
   def test_parse_line_with_empty_string
@@ -296,7 +296,7 @@ class TestIdsCommand < Minitest::Test
   end
 
   def test_parse_line_with_leading_spaces
-    assert_equal 100001, Cfc::Commands::Ids.parse_line("  100001 John Smith")
+    assert_equal 100_001, Cfc::Commands::Ids.parse_line("  100001 John Smith")
   end
 
   # Test integration with other commands
@@ -304,31 +304,31 @@ class TestIdsCommand < Minitest::Test
     ids_file = File.join(@tmp_dir, "test.ids")
     File.write(ids_file, "100001 John Smith\n100002 Jane Johnson\n")
 
-    ids = Cfc::Diff.parse_ids_file(ids_file)
-    assert_equal [100001, 100002], ids
+    ids = Cfc::Helpers.parse_ids_file(ids_file)
+    assert_equal [100_001, 100_002], ids
   end
 
   def test_history_parse_ids_file_with_names
     ids_file = File.join(@tmp_dir, "test.ids")
     File.write(ids_file, "100001 John Smith\n# comment\n100002 Jane Johnson\n")
 
-    ids = Cfc::Commands::History.parse_ids_file(ids_file)
-    assert_equal [100001, 100002], ids
+    ids = Cfc::Helpers.parse_ids_file(ids_file)
+    assert_equal [100_001, 100_002], ids
   end
 
   def test_show_parse_ids_file_with_names
     ids_file = File.join(@tmp_dir, "test.ids")
     File.write(ids_file, "100001\n100002 Jane Johnson\n")
 
-    ids = Cfc::Commands::Show.parse_ids_file(ids_file)
-    assert_equal [100001, 100002], ids
+    ids = Cfc::Helpers.parse_ids_file(ids_file)
+    assert_equal [100_001, 100_002], ids
   end
 
   def test_diff_parse_ids_file_with_comments
     ids_file = File.join(@tmp_dir, "test.ids")
     File.write(ids_file, "# Header comment\n100001\n100002\n# Footer comment\n")
 
-    ids = Cfc::Diff.parse_ids_file(ids_file)
-    assert_equal [100001, 100002], ids
+    ids = Cfc::Helpers.parse_ids_file(ids_file)
+    assert_equal [100_001, 100_002], ids
   end
 end
