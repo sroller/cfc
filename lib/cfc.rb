@@ -138,6 +138,18 @@ module Cfc
       true
     end
 
+    def self.handle_no_command_error(command_name, *)
+      warn "Unknown command: #{command_name}\n\n"
+      CLI.start(["help"])
+      exit 1
+    end
+
+    def self.handle_argument_error(command, _error, _args, _arity)
+      warn "Invalid arguments for '#{command.name}'\n\n"
+      CLI.start(["help", command.name])
+      exit 1
+    end
+
     private
 
     def validate_format!
